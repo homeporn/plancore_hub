@@ -1,13 +1,17 @@
 /**
  * CPM (Critical Path Method) Engine
  * Deterministic schedule calculation: ES/EF/LS/LF/TF/FF/Critical Path
+ * Supports working-day calendars and date constraints (SNET/SNLT/FNET/FNLT/MSO/MFO).
  */
 
 import type { ScheduleRow, PredecessorLink } from '../schedule/types.js';
+import { DEFAULT_CALENDAR } from '../calendar/types.js';
+import type { WorkCalendar } from '../calendar/types.js';
+import { offsetToDate, dateToOffset } from '../calendar/calendar.js';
 
 export interface CpmResult {
   row_id: string;
-  early_start: number;   // day offset from project start
+  early_start: number;   // working-day offset from project start
   early_finish: number;
   late_start: number;
   late_finish: number;
@@ -64,7 +68,6 @@ function topologicalSort(rows: ScheduleRow[]): { sorted: string[]; hasCycles: bo
   }
 
   const hasCycles = sorted.length < rows.length;
-  // Add remaining (cycles) at end
   for (const r of rows) {
     if (!sorted.includes(r.row_id)) sorted.push(r.row_id);
   }
@@ -72,45 +75,13 @@ function topologicalSort(rows: ScheduleRow[]): { sorted: string[]; hasCycles: bo
   return { sorted, hasCycles };
 }
 
-function getLinkOffset(link: PredecessorLink, predResult: CpmResult, predDuration: number): number {
-  switch (link.type) {
-    case 'FS': return predResult.early_finish + link.lag;
-    case 'SS': return predResult.early_start + link.lag;
-    case 'FF': return predResult.early_finish + link.lag; // will be adjusted for finish constraint
-    case 'SF': return predResult.early_start + link.lag;
-    default: return predResult.early_finish + link.lag;
-  }
-}
-
-function getLinkOffsetLate(link: PredecessorLink, succResult: CpmResult, succDuration: number): number {
-  switch (link.type) {
-    case 'FS': return succResult.late_start - link.lag;
-    case 'SS': return succResult.late_start - link.lag;
-    case 'FF': return succResult.late_finish - link.lag;
-    case 'SF': return succResult.late_finish - link.lag;
-    default: return succResult.late_start - link.lag;
-  }
-}
-
 function getEffectiveDuration(row: ScheduleRow): number {
-  if (row.row_type === 'веха') {
-    return 0;
+  if (row.row_type === 'веха') return 0;
+  if (row.taskStatus === 'COMPLETED' || row.actualFinish) return 0;
+  if (row.taskStatus === 'IN_PROGRESS' && row.remainingDuration != null && row.remainingDuration >= 0) {
+    return row.remainingDuration;
   }
-
-  if (row.taskStatus === 'COMPLETED' || row.actualFinish) {
-    return 0;
-  }
-
-  if (row.taskStatus === 'IN_PROGRESS') {
-    if (row.remainingDuration != null && row.remainingDuration >= 0) {
-      return row.remainingDuration;
-    }
-  }
-
-  if (row.duration != null && row.duration > 0) {
-    return row.duration;
-  }
-
+  if (row.duration != null && row.duration > 0) return row.duration;
   return 1;
 }
 
@@ -118,7 +89,7 @@ function getEffectiveDuration(row: ScheduleRow): number {
  * Run full CPM calculation on schedule rows.
  * Returns ES/EF/LS/LF/TF/FF and critical path for all non-header rows.
  */
-export function runCpm(rows: ScheduleRow[]): CpmOutput {
+export function runCpm(rows: ScheduleRow[], calendar: WorkCalendar = DEFAULT_CALENDAR): CpmOutput {
   const tasks = rows.filter(r => r.row_type !== 'заголовок');
   if (tasks.length === 0) {
     return { results: new Map(), criticalPath: [], projectDuration: 0, hasCycles: false };
@@ -137,6 +108,40 @@ export function runCpm(rows: ScheduleRow[]): CpmOutput {
         if (!successors.has(link.rowId)) successors.set(link.rowId, []);
         successors.get(link.rowId)!.push({ rowId: r.row_id, link });
       }
+    }
+  }
+
+  // Find project anchor date for constraint conversion
+  let projectStartDate: Date | null = null;
+  for (const r of rows) {
+    if (r.startDate && (!projectStartDate || r.startDate < projectStartDate)) {
+      projectStartDate = r.startDate;
+    }
+  }
+  if (!projectStartDate) projectStartDate = new Date();
+
+  // Pre-compute constraint offsets
+  const constraintMin = new Map<string, number>(); // minimum ES
+  const constraintMax = new Map<string, number>(); // maximum LS
+  const constraintFinishMin = new Map<string, number>(); // minimum EF
+  const constraintFinishMax = new Map<string, number>(); // maximum LF
+
+  for (const r of tasks) {
+    if (!r.constraint) continue;
+    const offset = dateToOffset(projectStartDate, r.constraint.date, calendar);
+    switch (r.constraint.type) {
+      case 'SNET': constraintMin.set(r.row_id, offset); break;
+      case 'SNLT': constraintMax.set(r.row_id, offset); break;
+      case 'FNET': constraintFinishMin.set(r.row_id, offset); break;
+      case 'FNLT': constraintFinishMax.set(r.row_id, offset); break;
+      case 'MSO':
+        constraintMin.set(r.row_id, offset);
+        constraintMax.set(r.row_id, offset);
+        break;
+      case 'MFO':
+        constraintFinishMin.set(r.row_id, offset);
+        constraintFinishMax.set(r.row_id, offset);
+        break;
     }
   }
 
@@ -165,7 +170,7 @@ export function runCpm(rows: ScheduleRow[]): CpmOutput {
     const result = results.get(id)!;
     const duration = getEffectiveDuration(row);
 
-    let maxStart = 0;
+    let maxStart = constraintMin.get(id) ?? 0;
 
     for (const link of row.predecessors) {
       const predResult = results.get(link.rowId);
@@ -173,26 +178,29 @@ export function runCpm(rows: ScheduleRow[]): CpmOutput {
 
       let candidate: number;
       switch (link.type) {
-        case 'FS':
-          candidate = predResult.early_finish + link.lag;
-          break;
-        case 'SS':
-          candidate = predResult.early_start + link.lag;
-          break;
-        case 'FF':
-          candidate = predResult.early_finish + link.lag - duration;
-          break;
-        case 'SF':
-          candidate = predResult.early_start + link.lag - duration;
-          break;
-        default:
-          candidate = predResult.early_finish + link.lag;
+        case 'FS': candidate = predResult.early_finish + link.lag; break;
+        case 'SS': candidate = predResult.early_start + link.lag; break;
+        case 'FF': candidate = predResult.early_finish + link.lag - duration; break;
+        case 'SF': candidate = predResult.early_start + link.lag - duration; break;
+        default:   candidate = predResult.early_finish + link.lag;
       }
       if (candidate > maxStart) maxStart = candidate;
     }
 
+    // FNET: EF must be >= constraintFinishMin → ES >= constraintFinishMin - duration
+    const finMin = constraintFinishMin.get(id);
+    if (finMin !== undefined) {
+      const implied = finMin - duration;
+      if (implied > maxStart) maxStart = implied;
+    }
+
     result.early_start = maxStart;
     result.early_finish = maxStart + duration;
+
+    // Apply FNET hard floor on EF
+    if (finMin !== undefined && result.early_finish < finMin) {
+      result.early_finish = finMin;
+    }
   }
 
   // Project duration
@@ -202,15 +210,14 @@ export function runCpm(rows: ScheduleRow[]): CpmOutput {
   }
 
   // ── Backward pass: compute LS/LF ──
-  // Initialize all to project finish
   for (const [, r] of results) {
-    r.late_finish = projectFinish;
     const row = rowMap.get(r.row_id)!;
     const duration = getEffectiveDuration(row);
-    r.late_start = projectFinish - duration;
+    const lfMax = constraintFinishMax.get(r.row_id);
+    r.late_finish = lfMax !== undefined ? Math.min(projectFinish, lfMax) : projectFinish;
+    r.late_start = r.late_finish - duration;
   }
 
-  // Reverse order
   for (let i = sorted.length - 1; i >= 0; i--) {
     const id = sorted[i];
     const row = rowMap.get(id)!;
@@ -224,20 +231,11 @@ export function runCpm(rows: ScheduleRow[]): CpmOutput {
 
       let candidate: number;
       switch (link.type) {
-        case 'FS':
-          candidate = succResult.late_start - link.lag;
-          break;
-        case 'SS':
-          candidate = succResult.late_start - link.lag;
-          break;
-        case 'FF':
-          candidate = succResult.late_finish - link.lag;
-          break;
-        case 'SF':
-          candidate = succResult.late_finish - link.lag;
-          break;
-        default:
-          candidate = succResult.late_start - link.lag;
+        case 'FS': candidate = succResult.late_start - link.lag; break;
+        case 'SS': candidate = succResult.late_start - link.lag; break;
+        case 'FF': candidate = succResult.late_finish - link.lag; break;
+        case 'SF': candidate = succResult.late_finish - link.lag; break;
+        default:   candidate = succResult.late_start - link.lag;
       }
 
       if (link.type === 'FS' || link.type === 'SF') {
@@ -245,56 +243,50 @@ export function runCpm(rows: ScheduleRow[]): CpmOutput {
           result.late_finish = candidate;
           result.late_start = candidate - duration;
         }
-      } else {
-        if (link.type === 'SS') {
-          if (candidate < result.late_start) {
-            result.late_start = candidate;
-            result.late_finish = candidate + duration;
-          }
-        } else { // FF
-          if (candidate < result.late_finish) {
-            result.late_finish = candidate;
-            result.late_start = candidate - duration;
-          }
+      } else if (link.type === 'SS') {
+        if (candidate < result.late_start) {
+          result.late_start = candidate;
+          result.late_finish = candidate + duration;
+        }
+      } else { // FF
+        if (candidate < result.late_finish) {
+          result.late_finish = candidate;
+          result.late_start = candidate - duration;
         }
       }
+    }
+
+    // Apply SNLT constraint on LS
+    const lsMax = constraintMax.get(id);
+    if (lsMax !== undefined && result.late_start > lsMax) {
+      result.late_start = lsMax;
+      result.late_finish = lsMax + duration;
     }
   }
 
   // ── Compute floats and critical path ──
-  // Find project anchor date
-  let projectStartDate: Date | null = null;
-  for (const r of rows) {
-    if (r.startDate && (!projectStartDate || r.startDate < projectStartDate)) {
-      projectStartDate = r.startDate;
-    }
-  }
-  if (!projectStartDate) projectStartDate = new Date();
-
   const criticalPath: string[] = [];
 
   for (const [id, result] of results) {
     result.total_float = result.late_start - result.early_start;
-    
-    // Free float: min(ES of all successors considering link type) - EF of this task
+
     const succs = successors.get(id) || [];
     if (succs.length > 0) {
-      let minSuccStart = Infinity;
+      let minSuccRef = Infinity;
       for (const { rowId: succId, link } of succs) {
         const succResult = results.get(succId);
         if (!succResult) continue;
-        
         let ref: number;
         switch (link.type) {
           case 'FS': ref = succResult.early_start - link.lag; break;
           case 'SS': ref = succResult.early_start - link.lag; break;
           case 'FF': ref = succResult.early_finish - link.lag; break;
           case 'SF': ref = succResult.early_start - link.lag; break;
-          default: ref = succResult.early_start - link.lag;
+          default:   ref = succResult.early_start - link.lag;
         }
-        if (ref < minSuccStart) minSuccStart = ref;
+        if (ref < minSuccRef) minSuccRef = ref;
       }
-      result.free_float = Math.max(0, minSuccStart - result.early_finish);
+      result.free_float = Math.max(0, minSuccRef - result.early_finish);
     } else {
       result.free_float = Math.max(0, projectFinish - result.early_finish);
     }
@@ -302,20 +294,13 @@ export function runCpm(rows: ScheduleRow[]): CpmOutput {
     result.is_critical = result.total_float <= 0;
     if (result.is_critical) criticalPath.push(id);
 
-    // Convert to dates
-    result.earlyStartDate = addDaysToDate(projectStartDate, result.early_start);
-    result.earlyFinishDate = addDaysToDate(projectStartDate, result.early_finish);
-    result.lateStartDate = addDaysToDate(projectStartDate, result.late_start);
-    result.lateFinishDate = addDaysToDate(projectStartDate, result.late_finish);
+    result.earlyStartDate = offsetToDate(projectStartDate, result.early_start, calendar);
+    result.earlyFinishDate = offsetToDate(projectStartDate, result.early_finish, calendar);
+    result.lateStartDate = offsetToDate(projectStartDate, result.late_start, calendar);
+    result.lateFinishDate = offsetToDate(projectStartDate, result.late_finish, calendar);
   }
 
   return { results, criticalPath, projectDuration: projectFinish, hasCycles };
-}
-
-function addDaysToDate(base: Date, days: number): Date {
-  const d = new Date(base);
-  d.setDate(d.getDate() + days);
-  return d;
 }
 
 /**
@@ -323,7 +308,7 @@ function addDaysToDate(base: Date, days: number): Date {
  */
 export interface VarianceResult {
   task_id: string;
-  start_variance: number | null; // days (positive = late)
+  start_variance: number | null;
   finish_variance: number | null;
   duration_variance: number | null;
 }

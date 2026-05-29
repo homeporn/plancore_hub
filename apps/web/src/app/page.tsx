@@ -12,12 +12,20 @@ export default function LandingPage() {
         </p>
       </div>
 
-      <Link
-        href="/app"
-        className="rounded-lg bg-[var(--foreground)] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
-      >
-        Открыть приложение
-      </Link>
+      <div className="flex gap-3">
+        <Link
+          href="/app"
+          className="rounded-lg bg-[var(--foreground)] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
+        >
+          Аудит графика
+        </Link>
+        <Link
+          href="/editor"
+          className="rounded-lg border border-[var(--border)] px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-50"
+        >
+          Конструктор
+        </Link>
+      </div>
 
       <ul className="grid grid-cols-1 gap-3 text-left text-sm text-[var(--muted)] sm:grid-cols-3">
         <li className="rounded-lg border border-[var(--border)] p-4">
@@ -27,7 +35,7 @@ export default function LandingPage() {
           🔍 Аудит качества по правилам
         </li>
         <li className="rounded-lg border border-[var(--border)] p-4">
-          🧮 Расчёт критического пути
+          🧮 Расчёт критического пути (МКП)
         </li>
       </ul>
     </main>

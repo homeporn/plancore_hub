@@ -98,5 +98,8 @@ export interface ScheduleRow {
   baselineFinish: Date | null;
   normHours: number | null;
 
+  /** Optional scheduling constraint (SNET, MFO, etc.) */
+  constraint?: import('../calendar/types.js').DateConstraint;
+
   comment: string;
 }
