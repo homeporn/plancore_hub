@@ -38,7 +38,18 @@ pnpm dev          # запуск приложений (когда появитс
 ## Статус
 - [x] Волна 0 — каркас монорепо, CI, strict TS
 - [x] Волна 1 — доменное ядро (`@plancore/core`): schedule / audit / cpm / import + тесты
-- [ ] Волна 2 — MVP: импорт Excel + аудит (UI на Next.js)
-- [ ] Волна 3 — backend и сохранение проектов (Supabase)
+- [x] Волна 2 — MVP: импорт Excel + аудит (UI на Next.js)
+- [x] Волна 3 — backend (Supabase): auth, загрузка сохранённых проектов, аудит сохранённого графика
 - [ ] Волна 4 — конструктор + CPM в UI
 - [ ] Волна 5 — логический сетевой граф
+
+### Конфигурация (Волна 3)
+`apps/web/.env.local` (не коммитится):
+```
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+```
+`packages/data` подключается к **существующей** базе plancoreai
+(`arvesrgqdpsbkxbhiquc`) — схема не меняется, слой только читает/маппит
+данные под каноническую модель `ScheduleRow`. Типы БД сгенерированы
+из проекта (`packages/data/src/supabase/database.types.ts`).
