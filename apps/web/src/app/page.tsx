@@ -25,6 +25,12 @@ export default function LandingPage() {
         >
           Конструктор
         </Link>
+        <Link
+          href="/graph"
+          className="rounded-lg border border-[var(--border)] px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-50"
+        >
+          Сетевой граф
+        </Link>
       </div>
 
       <ul className="grid grid-cols-1 gap-3 text-left text-sm text-[var(--muted)] sm:grid-cols-3">
