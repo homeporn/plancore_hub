@@ -12,10 +12,16 @@ export default function LandingPage() {
         </p>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap justify-center gap-3">
+        <Link
+          href="/hub"
+          className="rounded-lg bg-[var(--foreground)] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
+        >
+          Мои проекты (Hub)
+        </Link>
         <Link
           href="/app"
-          className="rounded-lg bg-[var(--foreground)] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
+          className="rounded-lg border border-[var(--border)] px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-50"
         >
           Аудит графика
         </Link>

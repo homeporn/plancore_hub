@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { ProjectProvider } from '@/context/ProjectProvider';
 
 export const metadata: Metadata = {
   title: 'PlanCore — аудит календарно-сетевых графиков',
@@ -14,7 +15,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ru">
-      <body>{children}</body>
+      <body>
+        <ProjectProvider>{children}</ProjectProvider>
+      </body>
     </html>
   );
 }

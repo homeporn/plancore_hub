@@ -6,7 +6,11 @@ export {
 export {
   listMemberProjects,
   loadCurrentScheduleRows,
+  listProjectsWithMeta,
+  getProject,
+  createProject,
   type ProjectSummary,
+  type ProjectMeta,
 } from './repositories/projects.js';
 export {
   wbsTemplateToNode,
