@@ -8,3 +8,12 @@ export {
   loadCurrentScheduleRows,
   type ProjectSummary,
 } from './repositories/projects.js';
+export {
+  wbsTemplateToNode,
+  dependencyRowToRule,
+  durationRowToModel,
+} from './mappers/scaffold.js';
+export {
+  listTemplateObjectTypes,
+  loadScaffoldInput,
+} from './repositories/templates.js';

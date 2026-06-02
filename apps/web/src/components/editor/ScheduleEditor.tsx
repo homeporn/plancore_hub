@@ -1,15 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { parseExcelFile, importToSchedule, type ScheduleRow } from '@plancore/core';
 import { useScheduleStore } from './useScheduleStore';
 import { ScheduleTable } from './ScheduleTable';
 import { CpmSummary } from './CpmSummary';
+import { takeScheduleHandoff } from '@/lib/scheduleHandoff';
 
 export function ScheduleEditor() {
   const store = useScheduleStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Consume rows handed off from the wizard / template generator (one-shot).
+  useEffect(() => {
+    const handoff = takeScheduleHandoff();
+    if (handoff && handoff.length > 0) store.loadRows(handoff);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

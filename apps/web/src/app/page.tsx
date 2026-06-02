@@ -26,6 +26,12 @@ export default function LandingPage() {
           Конструктор
         </Link>
         <Link
+          href="/wizard"
+          className="rounded-lg border border-[var(--border)] px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-50"
+        >
+          Мастер
+        </Link>
+        <Link
           href="/graph"
           className="rounded-lg border border-[var(--border)] px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-50"
         >
