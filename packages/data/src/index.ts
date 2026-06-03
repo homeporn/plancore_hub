@@ -21,3 +21,20 @@ export {
   listTemplateObjectTypes,
   loadScaffoldInput,
 } from './repositories/templates.js';
+export {
+  sectionRowToRef,
+  subsectionRowToRef,
+  organizationRowToRef,
+  libraryItemRowToDomain,
+  libraryVersionRowToDomain,
+} from './mappers/library.js';
+export {
+  listSections,
+  listSubsections,
+  listOrganizations,
+} from './repositories/refs.js';
+export {
+  listLibraryItems,
+  getLibraryItem,
+  listItemVersions,
+} from './repositories/library.js';
