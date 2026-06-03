@@ -13,6 +13,7 @@
   "dependencies": {
     "@plancore/core": "workspace:*",
     "@plancore/data": "workspace:*",
+    "@plancore/store": "workspace:*",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.106.2",
     "next": "^15.1.6",
