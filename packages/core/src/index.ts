@@ -5,3 +5,4 @@ export * from './import/index.js';
 export * from './calendar/index.js';
 export * from './graph/index.js';
 export * from './scaffold/index.js';
+export * from './autofix/index.js';

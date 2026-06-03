@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import Link from 'next/link';
 import {
   parseExcelFile,
+  importToSchedule,
   runAudit,
   scheduleToAuditTasks,
   type AuditResult,
@@ -15,10 +16,13 @@ import { AuditSummary } from './AuditSummary';
 import { AuditTable } from './AuditTable';
 import { AuthScreen } from './AuthScreen';
 import { ProjectPicker } from './ProjectPicker';
+import { AutofixPanel } from './audit/AutofixPanel';
 
 interface LoadedAudit {
   source: string;
   result: AuditResult;
+  /** Canonical rows behind this audit, enabling auto-correction. */
+  rows: ScheduleRow[];
 }
 
 export function AuditWorkspace() {
@@ -40,7 +44,7 @@ export function AuditWorkspace() {
         setError('В файле не найдено ни одной задачи.');
         return;
       }
-      setAudit({ source: fileName, result: runAudit(tasks) });
+      setAudit({ source: fileName, result: runAudit(tasks), rows: importToSchedule(tasks) });
     } catch (e) {
       console.error('Parse/audit error:', e);
       setError('Не удалось обработать файл. Проверьте формат.');
@@ -55,10 +59,20 @@ export function AuditWorkspace() {
       setAudit({
         source: projectName,
         result: runAudit(scheduleToAuditTasks(rows)),
+        rows,
       });
     },
     [],
   );
+
+  // Re-audit after auto-correction so findings and the fix list stay in sync.
+  const handleAutofix = useCallback((rows: ScheduleRow[]) => {
+    setAudit((prev) =>
+      prev
+        ? { ...prev, rows, result: runAudit(scheduleToAuditTasks(rows)) }
+        : prev,
+    );
+  }, []);
 
   const reset = useCallback(() => {
     setAudit(null);
@@ -103,6 +117,7 @@ export function AuditWorkspace() {
             </p>
           </div>
           <AuditSummary result={audit.result} />
+          <AutofixPanel rows={audit.rows} onApply={handleAutofix} />
           <AuditTable result={audit.result} />
         </div>
       ) : (
