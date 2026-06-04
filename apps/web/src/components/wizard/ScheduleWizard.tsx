@@ -10,6 +10,7 @@ import {
   type ScheduleRow,
 } from '@plancore/core';
 import { listTemplateObjectTypes, loadScaffoldInput } from '@plancore/data';
+import { Button, Input, Alert } from '@plancore/ui';
 import { getBrowserClient } from '@/lib/supabase/browser';
 
 type Step = 'object' | 'params' | 'preview';
@@ -82,11 +83,7 @@ export function ScheduleWizard({ onCreate }: ScheduleWizardProps) {
 
       <h1 className="mb-6 text-2xl font-semibold">Мастер создания графика</h1>
 
-      {error && (
-        <p className="mb-4 rounded-lg border border-[var(--critical)] bg-red-50 px-4 py-3 text-sm text-[var(--critical)]">
-          {error}
-        </p>
-      )}
+      {error && <Alert tone="critical" className="mb-4">{error}</Alert>}
 
       {step === 'object' && (
         <section className="space-y-3">
@@ -100,13 +97,14 @@ export function ScheduleWizard({ onCreate }: ScheduleWizardProps) {
               {objectTypes.map((t) => (
                 <li key={t} className="flex items-center justify-between px-3 py-2 text-sm">
                   <span>{t}</span>
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => void chooseObjectType(t)}
                     disabled={loadingInput}
-                    className="rounded-md border border-[var(--border)] px-2 py-1 text-xs hover:bg-gray-50 disabled:opacity-60"
                   >
                     {loadingInput && objectType === t ? 'Загрузка…' : 'Выбрать'}
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -118,23 +116,19 @@ export function ScheduleWizard({ onCreate }: ScheduleWizardProps) {
         <section className="space-y-4">
           <h2 className="text-sm font-medium">Шаг 2. Параметры проекта</h2>
           <Field label="Объект / станция">
-            <input value={objectName} onChange={(e) => setObjectName(e.target.value)}
-              className="w-full rounded-md border border-[var(--border)] px-3 py-1.5 text-sm" />
+            <Input value={objectName} onChange={(e) => setObjectName(e.target.value)} />
           </Field>
           <Field label="Организация">
-            <input value={organization} onChange={(e) => setOrganization(e.target.value)}
-              className="w-full rounded-md border border-[var(--border)] px-3 py-1.5 text-sm" />
+            <Input value={organization} onChange={(e) => setOrganization(e.target.value)} />
           </Field>
           <Field label="Длительность по умолчанию (раб. дни)">
-            <input type="number" min={1} value={defaultDuration}
+            <Input type="number" min={1} value={defaultDuration}
               onChange={(e) => setDefaultDuration(Math.max(1, Number(e.target.value) || 1))}
-              className="w-32 rounded-md border border-[var(--border)] px-3 py-1.5 text-sm" />
+              className="w-32" />
           </Field>
           <div className="flex gap-2">
-            <button onClick={() => setStep('object')}
-              className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-gray-50">Назад</button>
-            <button onClick={() => setStep('preview')}
-              className="rounded-lg bg-[var(--foreground)] px-4 py-1.5 text-sm font-medium text-white hover:opacity-90">Предпросмотр</button>
+            <Button variant="outline" onClick={() => setStep('object')}>Назад</Button>
+            <Button onClick={() => setStep('preview')}>Предпросмотр</Button>
           </div>
         </section>
       )}
@@ -165,10 +159,8 @@ export function ScheduleWizard({ onCreate }: ScheduleWizardProps) {
             </table>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setStep('params')}
-              className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-gray-50">Назад</button>
-            <button onClick={() => onCreate(preview)} disabled={preview.length === 0}
-              className="rounded-lg bg-[var(--foreground)] px-4 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">Открыть в редакторе</button>
+            <Button variant="outline" onClick={() => setStep('params')}>Назад</Button>
+            <Button onClick={() => onCreate(preview)} disabled={preview.length === 0}>Открыть в редакторе</Button>
           </div>
         </section>
       )}

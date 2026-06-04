@@ -7,6 +7,7 @@ import {
   loadCurrentScheduleRows,
   type ProjectSummary,
 } from '@plancore/data';
+import { Button } from '@plancore/ui';
 import { getBrowserClient } from '@/lib/supabase/browser';
 
 interface ProjectPickerProps {
@@ -78,13 +79,14 @@ export function ProjectPicker({ userId, onOpenSchedule }: ProjectPickerProps) {
             className="flex items-center justify-between px-3 py-2 text-sm"
           >
             <span>{p.name}</span>
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => void open(p)}
               disabled={openingId === p.id}
-              className="rounded-md border border-[var(--border)] px-2 py-1 text-xs hover:bg-gray-50 disabled:opacity-60"
             >
               {openingId === p.id ? 'Открываю…' : 'Аудит'}
-            </button>
+            </Button>
           </li>
         ))}
       </ul>

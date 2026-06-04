@@ -7,6 +7,7 @@ import {
   createProject,
   type ProjectMeta,
 } from '@plancore/data';
+import { Button, buttonVariants, Input, Card, Alert, Badge } from '@plancore/ui';
 import { useAuth } from '@/lib/useAuth';
 import { useProject } from '@/context/ProjectProvider';
 import { getBrowserClient } from '@/lib/supabase/browser';
@@ -76,31 +77,27 @@ export function ProjectHub() {
         <div className="flex items-center gap-3 text-sm">
           <Link href="/library" className="text-[var(--muted)] hover:underline">Библиотека</Link>
           <span className="text-[var(--muted)]">{user.email}</span>
-          <button onClick={() => void signOut()}
-            className="rounded-lg border border-[var(--border)] px-3 py-1.5 hover:bg-gray-50">Выйти</button>
+          <Button variant="outline" size="md" onClick={() => void signOut()}>Выйти</Button>
         </div>
       </header>
 
       <div className="mb-6 flex items-end justify-between gap-4">
         <h1 className="text-2xl font-semibold">Мои проекты</h1>
         <div className="flex items-center gap-2">
-          <input
+          <Input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void handleCreate(); }}
             placeholder="Название проекта"
-            className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm"
+            className="w-auto"
           />
-          <button onClick={() => void handleCreate()} disabled={creating || !newName.trim()}
-            className="rounded-lg bg-[var(--foreground)] px-4 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
+          <Button onClick={() => void handleCreate()} disabled={creating || !newName.trim()}>
             {creating ? 'Создаю…' : '+ Проект'}
-          </button>
+          </Button>
         </div>
       </div>
 
-      {error && (
-        <p className="mb-4 rounded-lg border border-[var(--critical)] bg-red-50 px-4 py-3 text-sm text-[var(--critical)]">{error}</p>
-      )}
+      {error && <Alert tone="critical" className="mb-4">{error}</Alert>}
 
       {loading ? (
         <p className="text-sm text-[var(--muted)]">Загрузка проектов…</p>
@@ -132,10 +129,10 @@ function ProjectCard({
   onSelect: () => void;
 }) {
   return (
-    <li className={`rounded-lg border p-4 ${active ? 'border-[var(--foreground)] ring-1 ring-[var(--foreground)]' : 'border-[var(--border)]'}`}>
+    <Card as="li" className={active ? 'border-[var(--foreground)] ring-1 ring-[var(--foreground)]' : ''}>
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-medium">{project.name}</h3>
-        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-[var(--muted)]">{project.status || '—'}</span>
+        <Badge>{project.status || '—'}</Badge>
       </div>
       <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-[var(--muted)]">
         <dt>Этап</dt><dd className="text-right text-[var(--foreground)]">{project.stage || '—'}</dd>
@@ -144,18 +141,14 @@ function ProjectCard({
         <dt>Задач</dt><dd className="text-right text-[var(--foreground)]">{project.taskCount}</dd>
       </dl>
       <div className="mt-3 flex flex-wrap gap-2">
-        <button onClick={onSelect}
-          className="rounded-md border border-[var(--border)] px-2 py-1 text-xs hover:bg-gray-50">
+        <Button variant="outline" size="sm" onClick={onSelect}>
           {active ? '✓ Текущий' : 'Сделать текущим'}
-        </button>
-        <Link href="/app" onClick={onSelect}
-          className="rounded-md border border-[var(--border)] px-2 py-1 text-xs hover:bg-gray-50">Аудит</Link>
-        <Link href="/editor" onClick={onSelect}
-          className="rounded-md border border-[var(--border)] px-2 py-1 text-xs hover:bg-gray-50">Редактор</Link>
-        <Link href="/graph" onClick={onSelect}
-          className="rounded-md border border-[var(--border)] px-2 py-1 text-xs hover:bg-gray-50">Граф</Link>
+        </Button>
+        <Link href="/app" onClick={onSelect} className={buttonVariants({ variant: 'outline', size: 'sm' })}>Аудит</Link>
+        <Link href="/editor" onClick={onSelect} className={buttonVariants({ variant: 'outline', size: 'sm' })}>Редактор</Link>
+        <Link href="/graph" onClick={onSelect} className={buttonVariants({ variant: 'outline', size: 'sm' })}>Граф</Link>
       </div>
-    </li>
+    </Card>
   );
 }
 
