@@ -19,7 +19,7 @@ export function DiagnosticsPanel({ diagnostics, nodes, onFocus }: DiagnosticsPan
     cycles.length === 0 && danglingStart.length === 0 && danglingEnd.length === 0 && missingRefs.length === 0;
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col gap-4 overflow-auto border-l border-[var(--border)] bg-white p-4 text-sm">
+    <div className="flex flex-col gap-4 text-sm">
       <h2 className="text-sm font-semibold">Диагностика связей</h2>
 
       {clean && <p className="text-xs text-green-600">✓ Структурных проблем не обнаружено.</p>}
@@ -70,7 +70,7 @@ export function DiagnosticsPanel({ diagnostics, nodes, onFocus }: DiagnosticsPan
           ))}
         </Section>
       )}
-    </aside>
+    </div>
   );
 }
 
