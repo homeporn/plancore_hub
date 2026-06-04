@@ -42,5 +42,9 @@ export {
   listApprovalHistory,
   freezeBaseline,
   decideApproval,
+  getCurrentScheduleVersion,
+  resolveApprovalRole,
+  loadBaselineTasks,
   type ApprovalHistoryEntry,
+  type ScheduleVersionInfo,
 } from './repositories/approvals.js';

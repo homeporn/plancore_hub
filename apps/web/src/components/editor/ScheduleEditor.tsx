@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { parseExcelFile, importToSchedule, type ScheduleRow } from '@plancore/core';
-import { Button } from '@plancore/ui';
+import { Button, Dialog } from '@plancore/ui';
 import { useScheduleStore } from './useScheduleStore';
 import { ScheduleGrid } from './ScheduleGrid';
 import { CpmSummary } from './CpmSummary';
+import { ApprovalPanel } from '@/components/approval/ApprovalPanel';
 import { takeScheduleHandoff } from '@/lib/scheduleHandoff';
 import { useProject } from '@/context/ProjectProvider';
 import { loadCurrentScheduleRows } from '@plancore/data';
@@ -16,6 +17,7 @@ export function ScheduleEditor() {
   const store = useScheduleStore();
   const { current } = useProject();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [approvalOpen, setApprovalOpen] = useState(false);
 
   // On mount, prefer wizard/template handoff; otherwise load the current
   // project's saved schedule (if a project is selected in the Hub).
@@ -85,8 +87,20 @@ export function ScheduleEditor() {
           >
             + Строка
           </Button>
+
+          {current && (
+            <Button variant="outline" size="sm" onClick={() => setApprovalOpen(true)}>
+              Согласование
+            </Button>
+          )}
         </div>
       </header>
+
+      {current && (
+        <Dialog open={approvalOpen} onOpenChange={setApprovalOpen} title="Согласование версии">
+          <ApprovalPanel projectId={current.id} rows={store.rows} />
+        </Dialog>
+      )}
 
       {/* Grid */}
       <div className="min-h-0 flex-1">

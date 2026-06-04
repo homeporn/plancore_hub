@@ -146,14 +146,15 @@ Deno.serve(async (req) => {
     const { data: tasks, error: tasksErr } = await admin
       .from('project_schedule_version_tasks')
       .select(
-        'id, wbs_code, name, planned_start, planned_finish, planned_duration, work, responsible, department',
+        'id, task_row_id, wbs_code, name, planned_start, planned_finish, planned_duration, work, responsible, department',
       )
       .eq('schedule_version_id', body.scheduleVersionId);
     if (tasksErr) return json({ error: tasksErr.message }, 500);
 
     const rows = (tasks ?? []).map((t) => ({
       baseline_id: baselineId,
-      task_id: t.id,
+      // Match ScheduleRow.row_id (= task_row_id ?? id) so computeVariance lines up.
+      task_id: t.task_row_id ?? t.id,
       wbs_code: t.wbs_code,
       name: t.name,
       baseline_start: t.planned_start,

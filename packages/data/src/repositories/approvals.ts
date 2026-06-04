@@ -31,6 +31,82 @@ function rowToHistory(row: ApprovalRow): ApprovalHistoryEntry {
   };
 }
 
+export interface ScheduleVersionInfo {
+  id: string;
+  versionNumber: number;
+  versionLabel: string;
+  approvalStatus: ApprovalStatus;
+  isCurrent: boolean;
+  createdBy: string | null;
+  baselineId: string | null;
+}
+
+// project_team.role values that grant approver rights (mirror Edge Function).
+const APPROVER_ROLES = ['гип', 'главный инженер', 'руководитель', 'approver', 'lead', 'owner'];
+
+/** The current schedule version of a project with its approval state, or null. */
+export async function getCurrentScheduleVersion(
+  client: PlancoreClient,
+  projectId: string,
+): Promise<ScheduleVersionInfo | null> {
+  const { data, error } = await client
+    .from('project_schedule_versions')
+    .select('id, version_number, version_label, approval_status, is_current, created_by, baseline_id')
+    .eq('project_id', projectId)
+    .eq('is_current', true)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    id: data.id,
+    versionNumber: data.version_number,
+    versionLabel: data.version_label,
+    approvalStatus: data.approval_status as ApprovalStatus,
+    isCurrent: data.is_current,
+    createdBy: data.created_by,
+    baselineId: data.baseline_id,
+  };
+}
+
+/**
+ * Resolve a user's approval role for a project version: `author` when they
+ * created the version, `approver` when a project_team role marks them ГИП/lead,
+ * else `viewer`. Returns the strongest applicable role. Mirrors the Edge
+ * Function so the UI enables exactly the actions the server will allow.
+ */
+export async function resolveApprovalRole(
+  client: PlancoreClient,
+  projectId: string,
+  userId: string,
+  versionCreatedBy: string | null,
+): Promise<ApprovalRole> {
+  const { data, error } = await client
+    .from('project_team')
+    .select('role')
+    .eq('project_id', projectId)
+    .eq('user_id', userId);
+  if (error) throw error;
+  const isApprover = (data ?? []).some((r) =>
+    APPROVER_ROLES.some((needle) => (r.role ?? '').toLowerCase().includes(needle)),
+  );
+  if (isApprover) return 'approver';
+  if (versionCreatedBy && versionCreatedBy === userId) return 'author';
+  return 'viewer';
+}
+
+/** Baseline tasks for variance comparison (shape expected by computeVariance). */
+export async function loadBaselineTasks(
+  client: PlancoreClient,
+  baselineId: string,
+): Promise<{ task_id: string; baseline_start: string | null; baseline_finish: string | null; baseline_duration: number | null }[]> {
+  const { data, error } = await client
+    .from('baseline_tasks')
+    .select('task_id, baseline_start, baseline_finish, baseline_duration')
+    .eq('baseline_id', baselineId);
+  if (error) throw error;
+  return data ?? [];
+}
+
 /** Approval decisions for a schedule version, newest first. */
 export async function listApprovalHistory(
   client: PlancoreClient,
@@ -66,13 +142,14 @@ export async function freezeBaseline(
 
   const { data: tasks, error: tasksErr } = await client
     .from('project_schedule_version_tasks')
-    .select('id, wbs_code, name, planned_start, planned_finish, planned_duration, work, responsible, department')
+    .select('id, task_row_id, wbs_code, name, planned_start, planned_finish, planned_duration, work, responsible, department')
     .eq('schedule_version_id', scheduleVersionId);
   if (tasksErr) throw tasksErr;
 
   const rows: BaselineTaskInsert[] = (tasks ?? []).map((t) => ({
     baseline_id: baselineId,
-    task_id: t.id,
+    // Match ScheduleRow.row_id (= task_row_id ?? id) so computeVariance lines up.
+    task_id: t.task_row_id ?? t.id,
     wbs_code: t.wbs_code,
     name: t.name,
     baseline_start: t.planned_start,
