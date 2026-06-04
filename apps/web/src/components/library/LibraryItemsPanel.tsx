@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { LibraryStore } from '@plancore/store';
 import type { LibraryItem, LibraryItemVersion } from '@plancore/core';
+import { LibraryActions } from './LibraryActions';
 
 interface Props {
   store: LibraryStore;
@@ -17,12 +18,26 @@ function StateBadge({ value }: { value: string }) {
 }
 
 export function LibraryItemsPanel({ store, items }: Props) {
+  // Local copy so workflow actions can update an item in place.
+  const [list, setList] = useState<LibraryItem[]>(items);
   const [openId, setOpenId] = useState<string | null>(null);
   const [versions, setVersions] = useState<Record<string, LibraryItemVersion[]>>({});
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
-  if (items.length === 0) {
+  useEffect(() => setList(items), [items]);
+
+  if (list.length === 0) {
     return <p className="text-sm text-[var(--muted)]">В библиотеке пока нет элементов.</p>;
+  }
+
+  async function loadVersions(itemId: string) {
+    setLoadingId(itemId);
+    try {
+      const v = await store.getItemVersions(itemId);
+      setVersions((prev) => ({ ...prev, [itemId]: v }));
+    } finally {
+      setLoadingId(null);
+    }
   }
 
   async function toggle(item: LibraryItem) {
@@ -31,20 +46,18 @@ export function LibraryItemsPanel({ store, items }: Props) {
       return;
     }
     setOpenId(item.id);
-    if (!versions[item.id]) {
-      setLoadingId(item.id);
-      try {
-        const v = await store.getItemVersions(item.id);
-        setVersions((prev) => ({ ...prev, [item.id]: v }));
-      } finally {
-        setLoadingId(null);
-      }
-    }
+    if (!versions[item.id]) await loadVersions(item.id);
+  }
+
+  function handleChanged(updated: LibraryItem) {
+    setList((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+    // A new version snapshot was created server-side — refresh history.
+    void loadVersions(updated.id);
   }
 
   return (
     <ul className="space-y-2">
-      {items.map((item) => (
+      {list.map((item) => (
         <li key={item.id} className="rounded-lg border border-[var(--border)]">
           <button onClick={() => void toggle(item)} className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-gray-50">
             <span className="font-mono text-xs text-[var(--muted)]">{item.itemCode}</span>
@@ -63,6 +76,12 @@ export function LibraryItemsPanel({ store, items }: Props) {
                 <span>Ревьюер: <span className="text-[var(--foreground)]">{item.reviewerRole || '—'}</span></span>
                 <span>Обновлён: <span className="text-[var(--foreground)]">{item.updatedAt.slice(0, 10)}</span></span>
               </div>
+
+              <div className="mb-3">
+                <h4 className="mb-1 font-medium">Действия</h4>
+                <LibraryActions store={store} item={item} onChanged={handleChanged} />
+              </div>
+
               <h4 className="mb-1 font-medium">История версий</h4>
               {loadingId === item.id ? (
                 <p className="text-[var(--muted)]">Загрузка версий…</p>

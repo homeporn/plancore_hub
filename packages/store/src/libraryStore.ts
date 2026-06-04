@@ -15,6 +15,7 @@ import type {
   LibraryItem,
   LibraryItemVersion,
   LibraryItemFilter,
+  LibraryAction,
   ScheduleRow,
 } from '@plancore/core';
 import type { PlancoreClient } from '@plancore/data';
@@ -90,7 +91,29 @@ export class LibraryStore {
     return out;
   }
 
-  // ── Cache control (used by write ops later) ─────────────
+  // ── Write / orchestrator (Edge Function) ────────────────
+
+  /**
+   * Run a workflow action on a library item via the orchestrator Edge Function.
+   * The server validates the transition, snapshots a version and writes the
+   * change log; on success the local library cache is invalidated so the next
+   * read reflects the new state.
+   */
+  async runAction(
+    itemId: string,
+    action: LibraryAction,
+    options: { note?: string; payload?: unknown } = {},
+  ): Promise<LibraryItem> {
+    const { data, error } = await this.client.functions.invoke('library', {
+      body: { itemId, action, note: options.note, payload: options.payload },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error as string);
+    this.invalidateLibrary();
+    return data.item as LibraryItem;
+  }
+
+  // ── Cache control ───────────────────────────────────────
 
   invalidateLibrary(): void {
     this.cache.invalidatePrefix('items:');
