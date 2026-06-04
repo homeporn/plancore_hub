@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef } from 'react';
 import { parseExcelFile, importToSchedule, type ScheduleRow } from '@plancore/core';
+import { Button } from '@plancore/ui';
 import { useScheduleStore } from './useScheduleStore';
-import { ScheduleTable } from './ScheduleTable';
+import { ScheduleGrid } from './ScheduleGrid';
 import { CpmSummary } from './CpmSummary';
 import { takeScheduleHandoff } from '@/lib/scheduleHandoff';
 import { useProject } from '@/context/ProjectProvider';
@@ -66,12 +67,9 @@ export function ScheduleEditor() {
         <div className="flex items-center gap-2 ml-auto">
           <CpmSummary cpmOutput={store.cpmOutput} />
 
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs hover:bg-gray-50"
-          >
+          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
             Импорт Excel
-          </button>
+          </Button>
           <input
             ref={fileInputRef}
             type="file"
@@ -80,46 +78,27 @@ export function ScheduleEditor() {
             onChange={handleFile}
           />
 
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => store.addRowAfter(store.rows[store.rows.length - 1]?.row_id ?? null)}
-            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs hover:bg-gray-50"
           >
             + Строка
-          </button>
+          </Button>
         </div>
       </header>
 
-      {/* Table */}
-      <div
-        className="flex-1 overflow-auto"
-        onKeyDown={e => {
-          // Prevent page scroll on arrow keys when table focused
-          if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key) && store.selectedCell) {
-            e.preventDefault();
-          }
-        }}
-      >
-        <ScheduleTable
-          rows={store.rows}
-          cpmOutput={store.cpmOutput}
-          selectedCell={store.selectedCell}
-          editingCell={store.editingCell}
-          onSelect={store.setSelectedCell}
-          onStartEdit={store.setEditingCell}
-          onCommit={handleCommit}
-          onCancel={() => store.setEditingCell(null)}
-          onInsertAfter={store.addRowAfter}
-          onDelete={store.deleteRow}
-        />
+      {/* Grid */}
+      <div className="min-h-0 flex-1">
+        <ScheduleGrid rows={store.rows} cpmOutput={store.cpmOutput} onCommit={handleCommit} />
       </div>
 
       {/* Status bar */}
       <footer className="flex shrink-0 items-center gap-4 border-t border-[var(--border)] bg-gray-50 px-4 py-1 text-xs text-[var(--muted)]">
         <span>{store.rows.length} строк</span>
-        {store.selectedCell && (
-          <span>Выбрано: {store.selectedCell}</span>
-        )}
-        <span className="ml-auto">Enter/F2 — редактировать · Esc — отмена · Tab — следующая ячейка · Del — очистить</span>
+        <span className="ml-auto">
+          Двойной клик / Enter — редактировать · Tab — следующая ячейка · стрелки — навигация
+        </span>
       </footer>
     </div>
   );

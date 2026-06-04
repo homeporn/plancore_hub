@@ -7,6 +7,7 @@ import {
   type FixProposal,
   type ScheduleRow,
 } from '@plancore/core';
+import { Button, Alert, Card } from '@plancore/ui';
 
 interface AutofixPanelProps {
   rows: ScheduleRow[];
@@ -24,9 +25,7 @@ export function AutofixPanel({ rows, onApply }: AutofixPanelProps) {
 
   if (proposals.length === 0) {
     return (
-      <div className="rounded-lg border border-[var(--border)] bg-green-50 px-4 py-3 text-sm text-green-700">
-        ✓ Автоматических исправлений не требуется.
-      </div>
+      <Alert tone="success">✓ Автоматических исправлений не требуется.</Alert>
     );
   }
 
@@ -55,18 +54,16 @@ export function AutofixPanel({ rows, onApply }: AutofixPanelProps) {
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-[var(--border)] p-4">
+    <Card className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium">Автокоррекция · {proposals.length} предложений</h3>
         <div className="flex gap-2">
-          <button onClick={toggleAll}
-            className="rounded-md border border-[var(--border)] px-2 py-1 text-xs hover:bg-gray-50">
+          <Button variant="outline" size="sm" onClick={toggleAll}>
             {allSelected ? 'Снять все' : 'Выбрать все'}
-          </button>
-          <button onClick={apply} disabled={selected.size === 0}
-            className="rounded-md bg-[var(--foreground)] px-3 py-1 text-xs font-medium text-white hover:opacity-90 disabled:opacity-60">
+          </Button>
+          <Button size="sm" onClick={apply} disabled={selected.size === 0}>
             Исправить выбранное ({selected.size})
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -87,6 +84,6 @@ export function AutofixPanel({ rows, onApply }: AutofixPanelProps) {
           );
         })}
       </ul>
-    </div>
+    </Card>
   );
 }

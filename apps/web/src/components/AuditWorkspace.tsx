@@ -10,6 +10,7 @@ import {
   type AuditResult,
   type ScheduleRow,
 } from '@plancore/core';
+import { Button, Alert } from '@plancore/ui';
 import { useAuth } from '@/lib/useAuth';
 import { FileDropzone } from './FileDropzone';
 import { AuditSummary } from './AuditSummary';
@@ -89,21 +90,11 @@ export function AuditWorkspace() {
           {user && (
             <>
               <span className="text-[var(--muted)]">{user.email}</span>
-              <button
-                onClick={() => void signOut()}
-                className="rounded-lg border border-[var(--border)] px-3 py-1.5 hover:bg-gray-50"
-              >
-                Выйти
-              </button>
+              <Button variant="outline" size="md" onClick={() => void signOut()}>Выйти</Button>
             </>
           )}
           {audit && (
-            <button
-              onClick={reset}
-              className="rounded-lg border border-[var(--border)] px-3 py-1.5 hover:bg-gray-50"
-            >
-              Назад
-            </button>
+            <Button variant="outline" size="md" onClick={reset}>Назад</Button>
           )}
         </div>
       </header>
@@ -145,11 +136,7 @@ export function AuditWorkspace() {
             )}
           </div>
 
-          {error && (
-            <p className="rounded-lg border border-[var(--critical)] bg-red-50 px-4 py-3 text-sm text-[var(--critical)]">
-              {error}
-            </p>
-          )}
+          {error && <Alert tone="critical">{error}</Alert>}
         </div>
       )}
     </main>

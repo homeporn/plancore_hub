@@ -1,4 +1,20 @@
 import Link from 'next/link';
+import { buttonVariants, Card } from '@plancore/ui';
+
+const NAV = [
+  { href: '/hub', label: 'Мои проекты (Hub)', primary: true },
+  { href: '/app', label: 'Аудит графика' },
+  { href: '/editor', label: 'Конструктор' },
+  { href: '/wizard', label: 'Мастер' },
+  { href: '/graph', label: 'Сетевой граф' },
+  { href: '/library', label: 'Библиотека' },
+];
+
+const FEATURES = [
+  '📥 Импорт графика из Excel',
+  '🔍 Аудит качества по правилам',
+  '🧮 Расчёт критического пути (МКП)',
+];
 
 export default function LandingPage() {
   return (
@@ -13,54 +29,21 @@ export default function LandingPage() {
       </div>
 
       <div className="flex flex-wrap justify-center gap-3">
-        <Link
-          href="/hub"
-          className="rounded-lg bg-[var(--foreground)] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
-        >
-          Мои проекты (Hub)
-        </Link>
-        <Link
-          href="/app"
-          className="rounded-lg border border-[var(--border)] px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-50"
-        >
-          Аудит графика
-        </Link>
-        <Link
-          href="/editor"
-          className="rounded-lg border border-[var(--border)] px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-50"
-        >
-          Конструктор
-        </Link>
-        <Link
-          href="/wizard"
-          className="rounded-lg border border-[var(--border)] px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-50"
-        >
-          Мастер
-        </Link>
-        <Link
-          href="/graph"
-          className="rounded-lg border border-[var(--border)] px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-50"
-        >
-          Сетевой граф
-        </Link>
-        <Link
-          href="/library"
-          className="rounded-lg border border-[var(--border)] px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-50"
-        >
-          Библиотека
-        </Link>
+        {NAV.map((n) => (
+          <Link
+            key={n.href}
+            href={n.href}
+            className={buttonVariants({ variant: n.primary ? 'primary' : 'outline', size: 'lg' })}
+          >
+            {n.label}
+          </Link>
+        ))}
       </div>
 
       <ul className="grid grid-cols-1 gap-3 text-left text-sm text-[var(--muted)] sm:grid-cols-3">
-        <li className="rounded-lg border border-[var(--border)] p-4">
-          📥 Импорт графика из Excel
-        </li>
-        <li className="rounded-lg border border-[var(--border)] p-4">
-          🔍 Аудит качества по правилам
-        </li>
-        <li className="rounded-lg border border-[var(--border)] p-4">
-          🧮 Расчёт критического пути (МКП)
-        </li>
+        {FEATURES.map((f) => (
+          <Card key={f} as="li">{f}</Card>
+        ))}
       </ul>
     </main>
   );

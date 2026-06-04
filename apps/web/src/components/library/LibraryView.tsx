@@ -8,6 +8,7 @@ import type {
   RefOrganization,
   LibraryItem,
 } from '@plancore/core';
+import { Alert, Tabs } from '@plancore/ui';
 import { getBrowserClient } from '@/lib/supabase/browser';
 import { SectionsPanel } from './SectionsPanel';
 import { OrganizationsPanel } from './OrganizationsPanel';
@@ -57,25 +58,14 @@ export function LibraryView() {
 
       <h1 className="mb-6 text-2xl font-semibold">Библиотека</h1>
 
-      <nav className="mb-6 flex gap-1 border-b border-[var(--border)]">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`px-4 py-2 text-sm ${
-              tab === t.id
-                ? 'border-b-2 border-[var(--foreground)] font-medium'
-                : 'text-[var(--muted)] hover:text-[var(--foreground)]'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <Tabs
+        className="mb-6"
+        tabs={TABS}
+        value={tab}
+        onValueChange={(v) => setTab(v as Tab)}
+      />
 
-      {error && (
-        <p className="mb-4 rounded-lg border border-[var(--critical)] bg-red-50 px-4 py-3 text-sm text-[var(--critical)]">{error}</p>
-      )}
+      {error && <Alert tone="critical" className="mb-4">{error}</Alert>}
 
       {loading ? (
         <p className="text-sm text-[var(--muted)]">Загрузка…</p>
