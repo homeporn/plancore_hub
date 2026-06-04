@@ -1473,6 +1473,10 @@ export type Database = {
       }
       project_schedule_versions: {
         Row: {
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
+          baseline_id: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -1481,11 +1485,17 @@ export type Database = {
           project_id: string
           reason: string
           source_file_id: string | null
+          submitted_at: string | null
+          submitted_by: string | null
           version_kind: string
           version_label: string
           version_number: number
         }
         Insert: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          baseline_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -1494,11 +1504,17 @@ export type Database = {
           project_id: string
           reason?: string
           source_file_id?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           version_kind?: string
           version_label?: string
           version_number: number
         }
         Update: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          baseline_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -1507,11 +1523,20 @@ export type Database = {
           project_id?: string
           reason?: string
           source_file_id?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           version_kind?: string
           version_label?: string
           version_number?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "project_schedule_versions_baseline_id_fkey"
+            columns: ["baseline_id"]
+            isOneToOne: false
+            referencedRelation: "baseline_snapshots"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_schedule_versions_previous_version_id_fkey"
             columns: ["previous_version_id"]
@@ -2492,6 +2517,50 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      version_approvals: {
+        Row: {
+          action: string
+          actor_role: string
+          actor_user_id: string | null
+          comment: string
+          decided_at: string
+          from_status: string
+          id: string
+          schedule_version_id: string
+          to_status: string
+        }
+        Insert: {
+          action: string
+          actor_role: string
+          actor_user_id?: string | null
+          comment?: string
+          decided_at?: string
+          from_status: string
+          id?: string
+          schedule_version_id: string
+          to_status: string
+        }
+        Update: {
+          action?: string
+          actor_role?: string
+          actor_user_id?: string | null
+          comment?: string
+          decided_at?: string
+          from_status?: string
+          id?: string
+          schedule_version_id?: string
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "version_approvals_schedule_version_id_fkey"
+            columns: ["schedule_version_id"]
+            isOneToOne: false
+            referencedRelation: "project_schedule_versions"
             referencedColumns: ["id"]
           },
         ]

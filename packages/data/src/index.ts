@@ -38,3 +38,9 @@ export {
   getLibraryItem,
   listItemVersions,
 } from './repositories/library.js';
+export {
+  listApprovalHistory,
+  freezeBaseline,
+  decideApproval,
+  type ApprovalHistoryEntry,
+} from './repositories/approvals.js';
