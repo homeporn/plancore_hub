@@ -1,0 +1,23 @@
+# Netlify configuration for the PlanCore monorepo (pnpm workspace).
+#
+# The deployable app lives in apps/web; the build runs from the repo root so
+# pnpm can resolve the @plancore/* workspace packages, and Netlify publishes the
+# Next.js app via the official plugin.
+
+[build]
+  # Run the build from the repo root (default), installing the whole workspace.
+  command = "pnpm install --frozen-lockfile && pnpm --filter @plancore/web build"
+  # Path to the Next.js app Netlify should serve.
+  publish = "apps/web/.next"
+
+[build.environment]
+  # Pin the toolchain to match local/CI.
+  NODE_VERSION = "20"
+  PNPM_VERSION = "10.33.0"
+  # Skip Next telemetry on CI.
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Official adapter: turns `next build` output into Netlify functions/edge for
+# SSR, image optimization and the App Router.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
