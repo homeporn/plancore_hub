@@ -74,6 +74,7 @@ export function ProjectHub() {
       <header className="mb-8 flex items-center justify-between">
         <Link href="/" className="text-sm text-[var(--muted)] hover:underline">← На главную</Link>
         <div className="flex items-center gap-3 text-sm">
+          <Link href="/library" className="text-[var(--muted)] hover:underline">Библиотека</Link>
           <span className="text-[var(--muted)]">{user.email}</span>
           <button onClick={() => void signOut()}
             className="rounded-lg border border-[var(--border)] px-3 py-1.5 hover:bg-gray-50">Выйти</button>

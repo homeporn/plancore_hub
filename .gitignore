@@ -29,3 +29,8 @@ pnpm-debug.log*
 
 # next.js generated
 next-env.d.ts
+
+# supabase (CLI local state; keep config + migrations tracked)
+supabase/.branches/
+supabase/.temp/
+supabase/.env

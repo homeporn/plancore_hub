@@ -23,6 +23,9 @@ importers:
       '@plancore/data':
         specifier: workspace:*
         version: link:../../packages/data
+      '@plancore/store':
+        specifier: workspace:*
+        version: link:../../packages/store
       '@supabase/ssr':
         specifier: ^0.7.0
         version: 0.7.0(@supabase/supabase-js@2.106.2)
@@ -82,6 +85,28 @@ importers:
       '@plancore/core':
         specifier: workspace:*
         version: link:../core
+      '@supabase/supabase-js':
+        specifier: ^2.95.3
+        version: 2.106.2
+    devDependencies:
+      '@types/node':
+        specifier: ^22.16.5
+        version: 22.19.19
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@22.19.19)(jiti@1.21.7)
+
+  packages/store:
+    dependencies:
+      '@plancore/core':
+        specifier: workspace:*
+        version: link:../core
+      '@plancore/data':
+        specifier: workspace:*
+        version: link:../data
       '@supabase/supabase-js':
         specifier: ^2.95.3
         version: 2.106.2
