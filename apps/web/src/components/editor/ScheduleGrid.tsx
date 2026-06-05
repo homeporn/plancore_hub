@@ -43,6 +43,8 @@ interface ScheduleGridProps {
   cpmOutput: CpmOutput;
   /** Commit a single edited field back to the store. */
   onCommit: (rowId: string, field: keyof ScheduleRow, value: unknown) => void;
+  /** When true, disable all cell editing (e.g. an approved version). */
+  readOnly?: boolean;
 }
 
 function toDateString(value: Date | null): string {
@@ -131,10 +133,13 @@ function toColDef(
   return { ...base, field };
 }
 
-export function ScheduleGrid({ rows, cpmOutput, onCommit }: ScheduleGridProps) {
+export function ScheduleGrid({ rows, cpmOutput, onCommit, readOnly = false }: ScheduleGridProps) {
   const columnDefs = useMemo<ColDef<ScheduleRow>[]>(
-    () => COLUMNS.map((c) => toColDef(c, cpmOutput)),
-    [cpmOutput],
+    () => COLUMNS.map((c) => {
+      const def = toColDef(c, cpmOutput);
+      return readOnly ? { ...def, editable: false } : def;
+    }),
+    [cpmOutput, readOnly],
   );
 
   const defaultColDef = useMemo<ColDef<ScheduleRow>>(

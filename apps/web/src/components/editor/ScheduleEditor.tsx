@@ -5,7 +5,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { parseExcelFile, importToSchedule, type ScheduleRow } from '@plancore/core';
 import { Button, Dialog } from '@plancore/ui';
 import { useScheduleStore } from './useScheduleStore';
+import { useScheduleCollab } from './useScheduleCollab';
 import { ScheduleGrid } from './ScheduleGrid';
+import { ScheduleSaveBar } from './ScheduleSaveBar';
 import { CpmSummary } from './CpmSummary';
 import { ApprovalPanel } from '@/components/approval/ApprovalPanel';
 import { BatchHandoffDialog } from '@/components/handoff/BatchHandoffDialog';
@@ -22,6 +24,7 @@ export function ScheduleEditor() {
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [handoffOpen, setHandoffOpen] = useState(false);
   const [volumeImportOpen, setVolumeImportOpen] = useState(false);
+  const collab = useScheduleCollab(current?.id ?? null, (rows) => store.loadRows(rows));
 
   // On mount, prefer wizard/template handoff; otherwise load the current
   // project's saved schedule (if a project is selected in the Hub).
@@ -72,6 +75,18 @@ export function ScheduleEditor() {
 
         <div className="flex items-center gap-2 ml-auto">
           <CpmSummary cpmOutput={store.cpmOutput} />
+
+          {current && (
+            <ScheduleSaveBar
+              editable={collab.editable}
+              others={collab.others}
+              stale={collab.stale}
+              saveState={collab.saveState}
+              error={collab.error}
+              onSave={() => void collab.save(store.rows)}
+              onReload={() => void collab.reload()}
+            />
+          )}
 
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
             Импорт Excel
@@ -136,7 +151,7 @@ export function ScheduleEditor() {
 
       {/* Grid */}
       <div className="min-h-0 flex-1">
-        <ScheduleGrid rows={store.rows} cpmOutput={store.cpmOutput} onCommit={handleCommit} />
+        <ScheduleGrid rows={store.rows} cpmOutput={store.cpmOutput} onCommit={handleCommit} readOnly={current ? !collab.editable : false} />
       </div>
 
       {/* Status bar */}
