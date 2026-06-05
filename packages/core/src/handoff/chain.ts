@@ -26,6 +26,8 @@ export interface HandoffSpec {
   organization?: string;
   /** Name of the volume / book being requested (also the development row name). */
   volumeName: string;
+  /** Registry id of the volume; stamped on the development row when provided. */
+  volumeId?: string | null;
   /** Working days to issue the assignment. Defaults to 1. */
   issueDuration?: number;
   /** Whether to also create the development (разработка) row. Default true. */
@@ -41,6 +43,7 @@ export function buildHandoffChain(spec: HandoffSpec): ScheduleRow[] {
     toDepartment,
     organization = '',
     volumeName,
+    volumeId = null,
     issueDuration = 1,
     includeDevelopment = true,
     stage = '',
@@ -53,6 +56,8 @@ export function buildHandoffChain(spec: HandoffSpec): ScheduleRow[] {
     department: fromDepartment,
     organization,
     duration: issueDuration,
+    handoffStatus: 'issued',
+    handoffToDepartment: toDepartment,
   });
 
   const receipt = createBlankRow({
@@ -73,6 +78,7 @@ export function buildHandoffChain(spec: HandoffSpec): ScheduleRow[] {
       stage,
       department: toDepartment,
       organization,
+      volumeId,
       predecessors: [{ rowId: receipt.row_id, type: 'FS', lag: 0 }],
     });
     rows.push(development);

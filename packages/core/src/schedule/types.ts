@@ -101,5 +101,12 @@ export interface ScheduleRow {
   /** Optional scheduling constraint (SNET, MFO, etc.) */
   constraint?: import('../calendar/types.js').DateConstraint;
 
+  /** Inter-department handoff exchange state (on задание rows); null otherwise. */
+  handoffStatus: import('../handoff/workflow.js').HandoffStatus | null;
+  /** Receiving department for a handoff assignment (on задание rows). */
+  handoffToDepartment: string;
+  /** Volume (том) this development row produces; null otherwise. */
+  volumeId: string | null;
+
   comment: string;
 }

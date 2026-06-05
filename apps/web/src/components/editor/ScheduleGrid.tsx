@@ -11,8 +11,18 @@ import {
   type ValueGetterParams,
   type RowClassParams,
 } from 'ag-grid-community';
-import type { ScheduleRow, CpmOutput, CpmResult } from '@plancore/core';
+import type { ScheduleRow, CpmOutput, CpmResult, HandoffStatus } from '@plancore/core';
+import { HANDOFF_STATUS_LABELS } from '@plancore/core';
 import { COLUMNS, STATUS_LABELS, type ColumnDef } from './columnDefs';
+
+// Tailwind text colour per handoff exchange state (stuck = amber/red).
+const HANDOFF_CELL_CLASS: Record<HandoffStatus, string> = {
+  issued: 'text-blue-600',
+  received: 'text-amber-600',
+  accepted: 'text-green-700',
+  rejected: 'text-red-600',
+  reworking: 'text-amber-700',
+};
 
 // AG Grid v33: register the Community feature modules once.
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -74,6 +84,18 @@ function toColDef(
   }
 
   const field = col.id as keyof ScheduleRow;
+
+  // Handoff exchange state: localized label + colour by state.
+  if (col.id === 'handoffStatus') {
+    return {
+      ...base,
+      field,
+      valueFormatter: (p) =>
+        p.value ? HANDOFF_STATUS_LABELS[p.value as HandoffStatus] : '',
+      cellClass: (p) =>
+        p.value ? `font-medium ${HANDOFF_CELL_CLASS[p.value as HandoffStatus]}` : '',
+    };
+  }
 
   if (col.type === 'date') {
     return {

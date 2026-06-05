@@ -24,6 +24,7 @@ export const COLUMNS: ColumnDef[] = [
   { id: 'percentComplete', label: '%, завершение', width: 90, editable: true, type: 'number' },
   { id: 'responsible',  label: 'Ответственный', width: 140, editable: true, type: 'text' },
   { id: 'organization', label: 'Организация', width: 140, editable: true, type: 'text' },
+  { id: 'handoffStatus', label: 'Обмен',      width: 120, editable: false, type: 'readonly' },
   // CPM computed columns (read-only)
   { id: 'cpm_es',       label: 'РН (день)',  width: 90,  editable: false, type: 'readonly' },
   { id: 'cpm_ef',       label: 'РО (день)',  width: 90,  editable: false, type: 'readonly' },

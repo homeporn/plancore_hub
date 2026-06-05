@@ -60,6 +60,7 @@ export function BatchHandoffDialog({ projectId, open, onOpenChange, onApply }: P
         fromDepartment: d.fromDepartment,
         toDepartment: d.toDepartment,
         volumeName: volume.name || volume.code || 'Том',
+        volumeId: volume.id,
         includeDevelopment: d.includeDevelopment,
         stage: 'проектирование',
       });

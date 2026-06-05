@@ -42,6 +42,9 @@ function makeEmptyRow(index: number): ScheduleRow {
     baselineStart: null,
     baselineFinish: null,
     normHours: null,
+    handoffStatus: null,
+    handoffToDepartment: '',
+    volumeId: null,
     comment: '',
   };
 }

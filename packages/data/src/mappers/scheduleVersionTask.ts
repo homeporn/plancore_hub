@@ -1,4 +1,5 @@
 import type {
+  HandoffStatus,
   PredecessorLink,
   RowType,
   ScheduleRow,
@@ -70,6 +71,9 @@ export function versionTaskToScheduleRow(row: VersionTaskRow): ScheduleRow {
     baselineStart: toDate(row.baseline_start),
     baselineFinish: toDate(row.baseline_finish),
     normHours: null,
+    handoffStatus: (row.handoff_status as HandoffStatus | null) ?? null,
+    handoffToDepartment: row.handoff_to_department,
+    volumeId: row.volume_id,
     comment: row.comment,
   };
 }
@@ -106,6 +110,9 @@ export function scheduleRowToVersionTaskInsert(
     remaining_work: row.remainingWork,
     baseline_start: toIsoDate(row.baselineStart),
     baseline_finish: toIsoDate(row.baselineFinish),
+    handoff_status: row.handoffStatus,
+    handoff_to_department: row.handoffToDepartment,
+    volume_id: row.volumeId,
     comment: row.comment,
   };
 }
