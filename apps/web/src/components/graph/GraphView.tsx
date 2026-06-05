@@ -7,7 +7,9 @@ import {
   importToSchedule,
   type LinkType,
 } from '@plancore/core';
-import { Button, Input, Badge } from '@plancore/ui';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { setScheduleHandoff } from '@/lib/scheduleHandoff';
 import { useGraphEditor } from './useGraphEditor';
@@ -53,14 +55,14 @@ export function GraphView() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border bg-surface px-4 py-2">
+      <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border bg-card px-4 py-2">
         <h1 className="text-sm font-semibold">Холст: логический граф</h1>
 
         <div className="ml-2 flex items-center gap-1 rounded-lg border border-[var(--border)] p-0.5">
-          <Button variant={ed.mode === 'select' ? 'primary' : 'ghost'} size="sm" onClick={() => { ed.setMode('select'); ed.setPendingSource(null); }}>
+          <Button variant={ed.mode === 'select' ? 'default' : 'ghost'} size="sm" onClick={() => { ed.setMode('select'); ed.setPendingSource(null); }}>
             Выбор
           </Button>
-          <Button variant={ed.mode === 'connect' ? 'primary' : 'ghost'} size="sm" onClick={() => ed.setMode('connect')}>
+          <Button variant={ed.mode === 'connect' ? 'default' : 'ghost'} size="sm" onClick={() => ed.setMode('connect')}>
             Связи
           </Button>
         </div>
@@ -71,7 +73,7 @@ export function GraphView() {
         <div className="ml-auto flex items-center gap-4 text-sm">
           <span className="text-[var(--muted)]">Длит.: <span className="font-medium text-[var(--foreground)]">{ed.cpm.projectDuration} р.д.</span></span>
           <span className="text-[var(--muted)]">Крит.: <span className="font-medium text-red-600">{ed.cpm.criticalPath.length}</span></span>
-          {ed.diagnostics.hasCycles && <Badge tone="critical">⚠ Циклы</Badge>}
+          {ed.diagnostics.hasCycles && <Badge variant="destructive">⚠ Циклы</Badge>}
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Импорт Excel</Button>
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFile} />
           <Button size="sm" onClick={toEditor} disabled={ed.rows.length === 0}>В редактор →</Button>
@@ -121,7 +123,7 @@ export function GraphView() {
                 <Input value={selectedRow.name} onChange={(e) => ed.renameNode(selectedRow.row_id, e.target.value)} />
               </label>
               <div className="text-xs text-[var(--muted)]">СДР: <span className="text-[var(--foreground)]">{selectedRow.sdr}</span></div>
-              <Button variant="danger" size="sm" onClick={() => ed.deleteNode(selectedRow.row_id)}>Удалить узел</Button>
+              <Button variant="destructive" size="sm" onClick={() => ed.deleteNode(selectedRow.row_id)}>Удалить узел</Button>
             </div>
           )}
 
@@ -149,7 +151,7 @@ export function GraphView() {
                   <Input type="number" value={link.lag}
                     onChange={(e) => ed.setEdgeType(source, target, link.type, Number(e.target.value) || 0)} />
                 </label>
-                <Button variant="danger" size="sm" onClick={() => { ed.deleteEdge(source, target); ed.setSelectedId(null); }}>
+                <Button variant="destructive" size="sm" onClick={() => { ed.deleteEdge(source, target); ed.setSelectedId(null); }}>
                   Удалить связь
                 </Button>
               </div>
