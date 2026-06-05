@@ -8,3 +8,4 @@ export * from './scaffold/index.js';
 export * from './autofix/index.js';
 export * from './library/index.js';
 export * from './approval/index.js';
+export * from './handoff/index.js';
