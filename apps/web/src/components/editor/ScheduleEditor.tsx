@@ -8,6 +8,7 @@ import { useScheduleStore } from './useScheduleStore';
 import { ScheduleGrid } from './ScheduleGrid';
 import { CpmSummary } from './CpmSummary';
 import { ApprovalPanel } from '@/components/approval/ApprovalPanel';
+import { BatchHandoffDialog } from '@/components/handoff/BatchHandoffDialog';
 import { takeScheduleHandoff } from '@/lib/scheduleHandoff';
 import { useProject } from '@/context/ProjectProvider';
 import { loadCurrentScheduleRows } from '@plancore/data';
@@ -18,6 +19,7 @@ export function ScheduleEditor() {
   const { current } = useProject();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [approvalOpen, setApprovalOpen] = useState(false);
+  const [handoffOpen, setHandoffOpen] = useState(false);
 
   // On mount, prefer wizard/template handoff; otherwise load the current
   // project's saved schedule (if a project is selected in the Hub).
@@ -89,6 +91,11 @@ export function ScheduleEditor() {
           </Button>
 
           {current && (
+            <Button variant="outline" size="sm" onClick={() => setHandoffOpen(true)}>
+              Задания
+            </Button>
+          )}
+          {current && (
             <Button variant="outline" size="sm" onClick={() => setApprovalOpen(true)}>
               Согласование
             </Button>
@@ -100,6 +107,15 @@ export function ScheduleEditor() {
         <Dialog open={approvalOpen} onOpenChange={setApprovalOpen} title="Согласование версии">
           <ApprovalPanel projectId={current.id} rows={store.rows} />
         </Dialog>
+      )}
+
+      {current && (
+        <BatchHandoffDialog
+          projectId={current.id}
+          open={handoffOpen}
+          onOpenChange={setHandoffOpen}
+          onApply={(rows) => store.appendRows(rows)}
+        />
       )}
 
       {/* Grid */}
