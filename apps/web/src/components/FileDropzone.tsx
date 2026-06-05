@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
+import { UploadCloud } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface FileDropzoneProps {
   onFile: (buffer: ArrayBuffer, fileName: string) => void;
@@ -35,17 +37,17 @@ export function FileDropzone({ onFile, disabled }: FileDropzoneProps) {
         if (disabled) return;
         void handleFile(e.dataTransfer.files[0]);
       }}
-      className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-12 text-center transition-colors ${
-        dragOver
-          ? 'border-[var(--info)] bg-blue-50'
-          : 'border-[var(--border)] hover:border-[var(--muted)]'
-      } ${disabled ? 'pointer-events-none opacity-60' : ''}`}
+      className={cn(
+        'flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-12 text-center transition-colors',
+        dragOver ? 'border-primary bg-accent' : 'border-border hover:border-muted-foreground',
+        disabled && 'pointer-events-none opacity-60',
+      )}
     >
-      <span className="text-3xl">📥</span>
-      <p className="text-sm font-medium">
-        Перетащите файл Excel сюда или нажмите для выбора
-      </p>
-      <p className="text-xs text-[var(--muted)]">Поддерживаются .xlsx и .xls</p>
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary">
+        <UploadCloud className="h-6 w-6 text-muted-foreground" />
+      </span>
+      <p className="text-sm font-medium">Перетащите файл Excel сюда или нажмите для выбора</p>
+      <p className="text-xs text-muted-foreground">Поддерживаются .xlsx и .xls</p>
       <input
         ref={inputRef}
         type="file"
