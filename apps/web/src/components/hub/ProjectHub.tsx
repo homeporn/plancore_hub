@@ -1,29 +1,50 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import {
+  FolderPlus,
+  FolderOpen,
+  CheckCircle2,
+  ListTodo,
+  ShieldCheck,
+  Table2,
+  Network,
+  Plus,
+} from 'lucide-react';
 import {
   listProjectsWithMeta,
   createProject,
   type ProjectMeta,
 } from '@plancore/data';
-import { Button, buttonVariants, Input, Card, Alert, Badge } from '@plancore/ui';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/useAuth';
 import { useProject } from '@/context/ProjectProvider';
 import { getBrowserClient } from '@/lib/supabase/browser';
 import { AuthScreen } from '@/components/AuthScreen';
 
 /**
- * Main working screen: lists the signed-in user's projects with their
- * parameters and schedule bounds, supports creating a project, and selects the
- * active project (shared via ProjectProvider) before entering a mode.
+ * Project workspace: lists the user's projects with their schedule bounds,
+ * supports creating one, and selects the active project (shared via
+ * ProjectProvider) before entering a mode.
  */
 export function ProjectHub() {
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { current, setCurrent } = useProject();
   const [projects, setProjects] = useState<ProjectMeta[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
 
@@ -32,7 +53,7 @@ export function ProjectHub() {
     setLoading(true);
     listProjectsWithMeta(getBrowserClient(), user.id)
       .then(setProjects)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Не удалось загрузить проекты'))
+      .catch((e) => toast.error('Не удалось загрузить проекты', { description: msg(e) }))
       .finally(() => setLoading(false));
   }, [user]);
 
@@ -44,67 +65,85 @@ export function ProjectHub() {
     const name = newName.trim();
     if (!name) return;
     setCreating(true);
-    setError(null);
     try {
       await createProject(getBrowserClient(), name);
       setNewName('');
+      toast.success('Проект создан', { description: name });
       reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось создать проект');
+      toast.error('Не удалось создать проект', { description: msg(e) });
     } finally {
       setCreating(false);
     }
   }, [newName, reload]);
 
+  const stats = useMemo(
+    () => ({
+      total: projects.length,
+      withSchedule: projects.filter((p) => p.taskCount > 0).length,
+      tasks: projects.reduce((s, p) => s + p.taskCount, 0),
+    }),
+    [projects],
+  );
+
   if (authLoading) {
-    return <main className="mx-auto max-w-5xl px-6 py-10 text-sm text-[var(--muted)]">Загрузка…</main>;
+    return (
+      <div className="mx-auto max-w-5xl">
+        <Skeleton className="h-40 w-full" />
+      </div>
+    );
   }
 
   if (!user) {
     return (
-      <main className="mx-auto max-w-md px-6 py-10 space-y-4">
-        <Link href="/" className="text-sm text-[var(--muted)] hover:underline">← На главную</Link>
-        <h1 className="text-2xl font-semibold">Войдите, чтобы открыть Hub</h1>
+      <div className="mx-auto max-w-md space-y-4">
+        <h1 className="text-2xl font-semibold">Войдите, чтобы открыть проекты</h1>
         <AuthScreen />
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
-      <header className="mb-8 flex items-center justify-between">
-        <Link href="/" className="text-sm text-[var(--muted)] hover:underline">← На главную</Link>
-        <div className="flex items-center gap-3 text-sm">
-          <Link href="/library" className="text-[var(--muted)] hover:underline">Библиотека</Link>
-          <span className="text-[var(--muted)]">{user.email}</span>
-          <Button variant="outline" size="md" onClick={() => void signOut()}>Выйти</Button>
+    <div className="mx-auto max-w-5xl space-y-6">
+      {/* Heading + create */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Мои проекты</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Выберите проект для аудита, редактирования или построения графика.
+          </p>
         </div>
-      </header>
-
-      <div className="mb-6 flex items-end justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Мои проекты</h1>
         <div className="flex items-center gap-2">
           <Input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void handleCreate(); }}
-            placeholder="Название проекта"
-            className="w-auto"
+            placeholder="Название нового проекта"
+            className="w-56"
           />
           <Button onClick={() => void handleCreate()} disabled={creating || !newName.trim()}>
-            {creating ? 'Создаю…' : '+ Проект'}
+            <Plus className="h-4 w-4" />
+            {creating ? 'Создаю…' : 'Проект'}
           </Button>
         </div>
       </div>
 
-      {error && <Alert tone="critical" className="mb-4">{error}</Alert>}
+      {/* Dashboard stats */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <Stat icon={FolderOpen} label="Проектов" value={stats.total} />
+        <Stat icon={CheckCircle2} label="С графиком" value={stats.withSchedule} />
+        <Stat icon={ListTodo} label="Всего задач" value={stats.tasks} />
+      </div>
 
+      {/* Project grid */}
       {loading ? (
-        <p className="text-sm text-[var(--muted)]">Загрузка проектов…</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-44 w-full rounded-xl" />)}
+        </div>
       ) : projects.length === 0 ? (
-        <p className="text-sm text-[var(--muted)]">У вас пока нет проектов. Создайте первый выше или используйте Мастер.</p>
+        <EmptyProjects />
       ) : (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {projects.map((p) => (
             <ProjectCard
               key={p.id}
@@ -113,9 +152,25 @@ export function ProjectHub() {
               onSelect={() => setCurrent(p)}
             />
           ))}
-        </ul>
+        </div>
       )}
-    </main>
+    </div>
+  );
+}
+
+function Stat({ icon: Icon, label, value }: { icon: typeof FolderOpen; label: string; value: number }) {
+  return (
+    <Card>
+      <CardContent className="flex items-center gap-3 p-4">
+        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+          <Icon className="h-5 w-5" />
+        </span>
+        <div>
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="text-xl font-semibold tabular-nums">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -129,30 +184,70 @@ function ProjectCard({
   onSelect: () => void;
 }) {
   return (
-    <Card as="li" className={active ? 'border-[var(--foreground)] ring-1 ring-[var(--foreground)]' : ''}>
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="font-medium">{project.name}</h3>
-        <Badge>{project.status || '—'}</Badge>
-      </div>
-      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-[var(--muted)]">
-        <dt>Этап</dt><dd className="text-right text-[var(--foreground)]">{project.stage || '—'}</dd>
-        <dt>Тип объекта</dt><dd className="text-right text-[var(--foreground)]">{project.objectType || '—'}</dd>
-        <dt>Срок</dt><dd className="text-right text-[var(--foreground)]">{fmtRange(project.startDate, project.finishDate)}</dd>
-        <dt>Задач</dt><dd className="text-right text-[var(--foreground)]">{project.taskCount}</dd>
-      </dl>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={onSelect}>
-          {active ? '✓ Текущий' : 'Сделать текущим'}
+    <Card className={cn('flex flex-col', active && 'ring-2 ring-primary')}>
+      <CardHeader className="flex-row items-start justify-between gap-2 space-y-0 pb-3">
+        <CardTitle className="text-base">{project.name}</CardTitle>
+        <Badge variant={active ? 'default' : 'secondary'}>{project.status || '—'}</Badge>
+      </CardHeader>
+      <CardContent className="pb-3">
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+          <Row label="Этап" value={project.stage} />
+          <Row label="Тип объекта" value={project.objectType} />
+          <Row label="Срок" value={fmtRange(project.startDate, project.finishDate)} />
+          <Row label="Задач" value={String(project.taskCount)} />
+        </dl>
+      </CardContent>
+      <CardFooter className="mt-auto flex-wrap gap-2 pt-0">
+        <Button variant={active ? 'secondary' : 'default'} size="sm" onClick={onSelect}>
+          {active ? <><CheckCircle2 className="h-4 w-4" /> Текущий</> : 'Сделать текущим'}
         </Button>
-        <Link href="/app" onClick={onSelect} className={buttonVariants({ variant: 'outline', size: 'sm' })}>Аудит</Link>
-        <Link href="/editor" onClick={onSelect} className={buttonVariants({ variant: 'outline', size: 'sm' })}>Редактор</Link>
-        <Link href="/graph" onClick={onSelect} className={buttonVariants({ variant: 'outline', size: 'sm' })}>Граф</Link>
-      </div>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/app" onClick={onSelect}><ShieldCheck className="h-4 w-4" /> Аудит</Link>
+        </Button>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/editor" onClick={onSelect}><Table2 className="h-4 w-4" /> Редактор</Link>
+        </Button>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/graph" onClick={onSelect}><Network className="h-4 w-4" /> Граф</Link>
+        </Button>
+      </CardFooter>
     </Card>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-right font-medium">{value || '—'}</dd>
+    </>
+  );
+}
+
+function EmptyProjects() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-16 text-center">
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary">
+        <FolderPlus className="h-6 w-6 text-muted-foreground" />
+      </span>
+      <div>
+        <p className="font-medium">Пока нет проектов</p>
+        <p className="text-sm text-muted-foreground">
+          Создайте первый проект в поле выше или воспользуйтесь Мастером.
+        </p>
+      </div>
+      <Button asChild variant="outline" size="sm">
+        <Link href="/wizard">Открыть Мастер</Link>
+      </Button>
+    </div>
   );
 }
 
 function fmtRange(start: string | null, finish: string | null): string {
   if (!start && !finish) return '—';
   return `${start ?? '?'} → ${finish ?? '?'}`;
+}
+
+function msg(e: unknown): string {
+  return e instanceof Error ? e.message : 'Неизвестная ошибка';
 }
