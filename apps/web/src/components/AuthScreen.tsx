@@ -33,7 +33,13 @@ export function AuthScreen() {
         if (error) throw error;
         toast.success('Вход выполнен');
       } else {
-        const { error } = await client.auth.signUp({ email, password });
+        const { error } = await client.auth.signUp({
+          email,
+          password,
+          // Return the user to the app after they confirm their email. The
+          // origin must be allow-listed in Supabase → Auth → URL Configuration.
+          options: { emailRedirectTo: `${window.location.origin}/` },
+        });
         if (error) throw error;
         toast.success('Регистрация создана', {
           description: 'Проверьте почту для подтверждения.',
