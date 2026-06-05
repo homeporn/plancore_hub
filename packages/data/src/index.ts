@@ -38,3 +38,24 @@ export {
   getLibraryItem,
   listItemVersions,
 } from './repositories/library.js';
+export {
+  listApprovalHistory,
+  freezeBaseline,
+  decideApproval,
+  getCurrentScheduleVersion,
+  resolveApprovalRole,
+  loadBaselineTasks,
+  type ApprovalHistoryEntry,
+  type ScheduleVersionInfo,
+} from './repositories/approvals.js';
+export {
+  listVolumes,
+  createVolume,
+  createVolumesBatch,
+  type ProjectVolume,
+  type VolumeInput,
+} from './repositories/volumes.js';
+export {
+  saveScheduleDraft,
+  getVersionRevision,
+} from './repositories/scheduleSave.js';

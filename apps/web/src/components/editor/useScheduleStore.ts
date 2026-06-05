@@ -42,6 +42,9 @@ function makeEmptyRow(index: number): ScheduleRow {
     baselineStart: null,
     baselineFinish: null,
     normHours: null,
+    handoffStatus: null,
+    handoffToDepartment: '',
+    volumeId: null,
     comment: '',
   };
 }
@@ -98,6 +101,11 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
     setRows(newRows);
   }, []);
 
+  const appendRows = useCallback((extra: ScheduleRow[]) => {
+    if (extra.length === 0) return;
+    setRows(prev => [...prev, ...extra]);
+  }, []);
+
   return {
     rows,
     cpmOutput,
@@ -111,5 +119,6 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
     deleteRow,
     moveRow,
     loadRows,
+    appendRows,
   };
 }

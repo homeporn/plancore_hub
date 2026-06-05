@@ -1,12 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { parseExcelFile, importToSchedule, type ScheduleRow } from '@plancore/core';
-import { Button } from '@plancore/ui';
+import { Button, Dialog } from '@plancore/ui';
 import { useScheduleStore } from './useScheduleStore';
+import { useScheduleCollab } from './useScheduleCollab';
 import { ScheduleGrid } from './ScheduleGrid';
+import { ScheduleSaveBar } from './ScheduleSaveBar';
 import { CpmSummary } from './CpmSummary';
+import { ApprovalPanel } from '@/components/approval/ApprovalPanel';
+import { BatchHandoffDialog } from '@/components/handoff/BatchHandoffDialog';
+import { VolumeImportDialog } from '@/components/handoff/VolumeImportDialog';
 import { takeScheduleHandoff } from '@/lib/scheduleHandoff';
 import { useProject } from '@/context/ProjectProvider';
 import { loadCurrentScheduleRows } from '@plancore/data';
@@ -16,6 +21,10 @@ export function ScheduleEditor() {
   const store = useScheduleStore();
   const { current } = useProject();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [approvalOpen, setApprovalOpen] = useState(false);
+  const [handoffOpen, setHandoffOpen] = useState(false);
+  const [volumeImportOpen, setVolumeImportOpen] = useState(false);
+  const collab = useScheduleCollab(current?.id ?? null, (rows) => store.loadRows(rows));
 
   // On mount, prefer wizard/template handoff; otherwise load the current
   // project's saved schedule (if a project is selected in the Hub).
@@ -67,6 +76,18 @@ export function ScheduleEditor() {
         <div className="flex items-center gap-2 ml-auto">
           <CpmSummary cpmOutput={store.cpmOutput} />
 
+          {current && (
+            <ScheduleSaveBar
+              editable={collab.editable}
+              others={collab.others}
+              stale={collab.stale}
+              saveState={collab.saveState}
+              error={collab.error}
+              onSave={() => void collab.save(store.rows)}
+              onReload={() => void collab.reload()}
+            />
+          )}
+
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
             Импорт Excel
           </Button>
@@ -85,12 +106,52 @@ export function ScheduleEditor() {
           >
             + Строка
           </Button>
+
+          {current && (
+            <Button variant="outline" size="sm" onClick={() => setVolumeImportOpen(true)}>
+              Импорт томов
+            </Button>
+          )}
+          {current && (
+            <Button variant="outline" size="sm" onClick={() => setHandoffOpen(true)}>
+              Задания
+            </Button>
+          )}
+          {current && (
+            <Button variant="outline" size="sm" onClick={() => setApprovalOpen(true)}>
+              Согласование
+            </Button>
+          )}
         </div>
       </header>
 
+      {current && (
+        <Dialog open={approvalOpen} onOpenChange={setApprovalOpen} title="Согласование версии">
+          <ApprovalPanel projectId={current.id} rows={store.rows} />
+        </Dialog>
+      )}
+
+      {current && (
+        <BatchHandoffDialog
+          projectId={current.id}
+          open={handoffOpen}
+          onOpenChange={setHandoffOpen}
+          onApply={(rows) => store.appendRows(rows)}
+        />
+      )}
+
+      {current && (
+        <VolumeImportDialog
+          projectId={current.id}
+          open={volumeImportOpen}
+          onOpenChange={setVolumeImportOpen}
+          onImported={(n) => alert(`Импортировано томов: ${n}`)}
+        />
+      )}
+
       {/* Grid */}
       <div className="min-h-0 flex-1">
-        <ScheduleGrid rows={store.rows} cpmOutput={store.cpmOutput} onCommit={handleCommit} />
+        <ScheduleGrid rows={store.rows} cpmOutput={store.cpmOutput} onCommit={handleCommit} readOnly={current ? !collab.editable : false} />
       </div>
 
       {/* Status bar */}

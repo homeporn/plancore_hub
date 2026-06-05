@@ -47,6 +47,9 @@ export function importToSchedule(tasks: TaskRow[]): ScheduleRow[] {
       baselineStart: t.baselineStart,
       baselineFinish: t.baselineEnd,
       normHours: null,
+      handoffStatus: null,
+      handoffToDepartment: '',
+      volumeId: null,
       comment: '',
     };
   });
@@ -118,6 +121,9 @@ export function createBlankRow(
     baselineStart: null,
     baselineFinish: null,
     normHours: null,
+    handoffStatus: null,
+    handoffToDepartment: '',
+    volumeId: null,
     comment: '',
     ...overrides,
   };

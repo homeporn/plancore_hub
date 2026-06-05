@@ -1359,6 +1359,8 @@ export type Database = {
           done_volume: number | null
           forecast_finish: string | null
           forecast_start: string | null
+          handoff_status: string | null
+          handoff_to_department: string
           id: string
           is_delayed: boolean
           name: string
@@ -1382,6 +1384,7 @@ export type Database = {
           task_row_id: string | null
           task_status: string | null
           total_volume: number | null
+          volume_id: string | null
           wbs_code: string
           work: number | null
         }
@@ -1397,6 +1400,8 @@ export type Database = {
           done_volume?: number | null
           forecast_finish?: string | null
           forecast_start?: string | null
+          handoff_status?: string | null
+          handoff_to_department?: string
           id?: string
           is_delayed?: boolean
           name?: string
@@ -1420,6 +1425,7 @@ export type Database = {
           task_row_id?: string | null
           task_status?: string | null
           total_volume?: number | null
+          volume_id?: string | null
           wbs_code?: string
           work?: number | null
         }
@@ -1435,6 +1441,8 @@ export type Database = {
           done_volume?: number | null
           forecast_finish?: string | null
           forecast_start?: string | null
+          handoff_status?: string | null
+          handoff_to_department?: string
           id?: string
           is_delayed?: boolean
           name?: string
@@ -1458,10 +1466,18 @@ export type Database = {
           task_row_id?: string | null
           task_status?: string | null
           total_volume?: number | null
+          volume_id?: string | null
           wbs_code?: string
           work?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "psvt_volume_id_fkey"
+            columns: ["volume_id"]
+            isOneToOne: false
+            referencedRelation: "project_volumes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_schedule_version_tasks_schedule_version_id_fkey"
             columns: ["schedule_version_id"]
@@ -1473,6 +1489,10 @@ export type Database = {
       }
       project_schedule_versions: {
         Row: {
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
+          baseline_id: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -1480,12 +1500,20 @@ export type Database = {
           previous_version_id: string | null
           project_id: string
           reason: string
+          revision: number
           source_file_id: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          updated_at: string
           version_kind: string
           version_label: string
           version_number: number
         }
         Insert: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          baseline_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -1493,12 +1521,20 @@ export type Database = {
           previous_version_id?: string | null
           project_id: string
           reason?: string
+          revision?: number
           source_file_id?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          updated_at?: string
           version_kind?: string
           version_label?: string
           version_number: number
         }
         Update: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          baseline_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -1506,12 +1542,23 @@ export type Database = {
           previous_version_id?: string | null
           project_id?: string
           reason?: string
+          revision?: number
           source_file_id?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          updated_at?: string
           version_kind?: string
           version_label?: string
           version_number?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "project_schedule_versions_baseline_id_fkey"
+            columns: ["baseline_id"]
+            isOneToOne: false
+            referencedRelation: "baseline_snapshots"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_schedule_versions_previous_version_id_fkey"
             columns: ["previous_version_id"]
@@ -1644,6 +1691,57 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_volumes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          mark: string
+          name: string
+          project_id: string
+          section_id: string | null
+          set_name: string
+          sort_order: number
+        }
+        Insert: {
+          code?: string
+          created_at?: string
+          id?: string
+          mark?: string
+          name?: string
+          project_id: string
+          section_id?: string | null
+          set_name?: string
+          sort_order?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          mark?: string
+          name?: string
+          project_id?: string
+          section_id?: string | null
+          set_name?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_volumes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_volumes_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "ref_sections"
             referencedColumns: ["id"]
           },
         ]
@@ -2496,6 +2594,50 @@ export type Database = {
           },
         ]
       }
+      version_approvals: {
+        Row: {
+          action: string
+          actor_role: string
+          actor_user_id: string | null
+          comment: string
+          decided_at: string
+          from_status: string
+          id: string
+          schedule_version_id: string
+          to_status: string
+        }
+        Insert: {
+          action: string
+          actor_role: string
+          actor_user_id?: string | null
+          comment?: string
+          decided_at?: string
+          from_status: string
+          id?: string
+          schedule_version_id: string
+          to_status: string
+        }
+        Update: {
+          action?: string
+          actor_role?: string
+          actor_user_id?: string | null
+          comment?: string
+          decided_at?: string
+          from_status?: string
+          id?: string
+          schedule_version_id?: string
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "version_approvals_schedule_version_id_fkey"
+            columns: ["schedule_version_id"]
+            isOneToOne: false
+            referencedRelation: "project_schedule_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wbs_templates: {
         Row: {
           created_at: string
@@ -3018,6 +3160,10 @@ export type Database = {
       next_calculation_version_no: {
         Args: { _project_id: string }
         Returns: number
+      }
+      save_schedule_draft: {
+        Args: { _version_id: string; _expected_revision: number; _tasks: Json }
+        Returns: Json
       }
       recalculate_work_item: {
         Args: { _reason?: string; _work_item_id: string }

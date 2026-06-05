@@ -11,8 +11,18 @@ import {
   type ValueGetterParams,
   type RowClassParams,
 } from 'ag-grid-community';
-import type { ScheduleRow, CpmOutput, CpmResult } from '@plancore/core';
+import type { ScheduleRow, CpmOutput, CpmResult, HandoffStatus } from '@plancore/core';
+import { HANDOFF_STATUS_LABELS } from '@plancore/core';
 import { COLUMNS, STATUS_LABELS, type ColumnDef } from './columnDefs';
+
+// Tailwind text colour per handoff exchange state (stuck = amber/red).
+const HANDOFF_CELL_CLASS: Record<HandoffStatus, string> = {
+  issued: 'text-blue-600',
+  received: 'text-amber-600',
+  accepted: 'text-green-700',
+  rejected: 'text-red-600',
+  reworking: 'text-amber-700',
+};
 
 // AG Grid v33: register the Community feature modules once.
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -33,6 +43,8 @@ interface ScheduleGridProps {
   cpmOutput: CpmOutput;
   /** Commit a single edited field back to the store. */
   onCommit: (rowId: string, field: keyof ScheduleRow, value: unknown) => void;
+  /** When true, disable all cell editing (e.g. an approved version). */
+  readOnly?: boolean;
 }
 
 function toDateString(value: Date | null): string {
@@ -75,6 +87,18 @@ function toColDef(
 
   const field = col.id as keyof ScheduleRow;
 
+  // Handoff exchange state: localized label + colour by state.
+  if (col.id === 'handoffStatus') {
+    return {
+      ...base,
+      field,
+      valueFormatter: (p) =>
+        p.value ? HANDOFF_STATUS_LABELS[p.value as HandoffStatus] : '',
+      cellClass: (p) =>
+        p.value ? `font-medium ${HANDOFF_CELL_CLASS[p.value as HandoffStatus]}` : '',
+    };
+  }
+
   if (col.type === 'date') {
     return {
       ...base,
@@ -109,10 +133,13 @@ function toColDef(
   return { ...base, field };
 }
 
-export function ScheduleGrid({ rows, cpmOutput, onCommit }: ScheduleGridProps) {
+export function ScheduleGrid({ rows, cpmOutput, onCommit, readOnly = false }: ScheduleGridProps) {
   const columnDefs = useMemo<ColDef<ScheduleRow>[]>(
-    () => COLUMNS.map((c) => toColDef(c, cpmOutput)),
-    [cpmOutput],
+    () => COLUMNS.map((c) => {
+      const def = toColDef(c, cpmOutput);
+      return readOnly ? { ...def, editable: false } : def;
+    }),
+    [cpmOutput, readOnly],
   );
 
   const defaultColDef = useMemo<ColDef<ScheduleRow>>(

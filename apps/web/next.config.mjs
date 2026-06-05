@@ -1,10 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@plancore/core'],
+  transpilePackages: ['@plancore/core', '@plancore/data', '@plancore/store', '@plancore/ui'],
   webpack: (config) => {
-    // @plancore/core uses explicit `.js` specifiers (NodeNext-style) on its
-    // TypeScript sources. Let webpack resolve them back to `.ts`/`.tsx`.
+    // The @plancore/* workspace packages use explicit `.js` specifiers
+    // (NodeNext-style) on their TypeScript sources. Let webpack resolve them
+    // back to `.ts`/`.tsx`.
     config.resolve.extensionAlias = {
       '.js': ['.ts', '.tsx', '.js'],
       '.jsx': ['.tsx', '.jsx'],
