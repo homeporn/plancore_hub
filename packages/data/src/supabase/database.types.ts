@@ -1500,9 +1500,11 @@ export type Database = {
           previous_version_id: string | null
           project_id: string
           reason: string
+          revision: number
           source_file_id: string | null
           submitted_at: string | null
           submitted_by: string | null
+          updated_at: string
           version_kind: string
           version_label: string
           version_number: number
@@ -1519,9 +1521,11 @@ export type Database = {
           previous_version_id?: string | null
           project_id: string
           reason?: string
+          revision?: number
           source_file_id?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
+          updated_at?: string
           version_kind?: string
           version_label?: string
           version_number: number
@@ -1538,9 +1542,11 @@ export type Database = {
           previous_version_id?: string | null
           project_id?: string
           reason?: string
+          revision?: number
           source_file_id?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
+          updated_at?: string
           version_kind?: string
           version_label?: string
           version_number?: number
@@ -3154,6 +3160,10 @@ export type Database = {
       next_calculation_version_no: {
         Args: { _project_id: string }
         Returns: number
+      }
+      save_schedule_draft: {
+        Args: { _version_id: string; _expected_revision: number; _tasks: Json }
+        Returns: Json
       }
       recalculate_work_item: {
         Args: { _reason?: string; _work_item_id: string }
