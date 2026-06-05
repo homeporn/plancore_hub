@@ -48,3 +48,10 @@ export {
   type ApprovalHistoryEntry,
   type ScheduleVersionInfo,
 } from './repositories/approvals.js';
+export {
+  listVolumes,
+  createVolume,
+  createVolumesBatch,
+  type ProjectVolume,
+  type VolumeInput,
+} from './repositories/volumes.js';
