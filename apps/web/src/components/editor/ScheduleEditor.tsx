@@ -1,9 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { parseExcelFile, importToSchedule, type ScheduleRow } from '@plancore/core';
-import { Button, Dialog } from '@plancore/ui';
 import { toast } from 'sonner';
+import { Upload, Plus, Boxes, Send, CheckSquare } from 'lucide-react';
+import { parseExcelFile, importToSchedule, type ScheduleRow } from '@plancore/core';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import { useScheduleStore } from './useScheduleStore';
 import { useScheduleCollab } from './useScheduleCollab';
 import { ScheduleGrid } from './ScheduleGrid';
@@ -69,27 +77,32 @@ export function ScheduleEditor() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Toolbar */}
-      <header className="flex shrink-0 items-center gap-4 border-b border-border bg-surface px-4 py-2">
-        <h1 className="text-sm font-semibold">Конструктор графика</h1>
-        {current && <span className="text-xs text-[var(--muted)]">· {current.name}</span>}
+      <header className="flex shrink-0 flex-wrap items-center gap-3 border-b bg-card px-4 py-2">
+        <div className="flex items-center gap-2">
+          <h1 className="text-sm font-semibold">Конструктор графика</h1>
+          {current && <span className="text-xs text-muted-foreground">· {current.name}</span>}
+        </div>
 
-        <div className="flex items-center gap-2 ml-auto">
-          <CpmSummary cpmOutput={store.cpmOutput} />
+        <CpmSummary cpmOutput={store.cpmOutput} />
 
+        <div className="ml-auto flex flex-wrap items-center gap-2">
           {current && (
-            <ScheduleSaveBar
-              editable={collab.editable}
-              others={collab.others}
-              stale={collab.stale}
-              saveState={collab.saveState}
-              error={collab.error}
-              onSave={() => void collab.save(store.rows)}
-              onReload={() => void collab.reload()}
-            />
+            <>
+              <ScheduleSaveBar
+                editable={collab.editable}
+                others={collab.others}
+                stale={collab.stale}
+                saveState={collab.saveState}
+                error={collab.error}
+                onSave={() => void collab.save(store.rows)}
+                onReload={() => void collab.reload()}
+              />
+              <Separator orientation="vertical" className="h-6" />
+            </>
           )}
 
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-            Импорт Excel
+            <Upload className="h-4 w-4" /> Импорт Excel
           </Button>
           <input
             ref={fileInputRef}
@@ -104,30 +117,33 @@ export function ScheduleEditor() {
             size="sm"
             onClick={() => store.addRowAfter(store.rows[store.rows.length - 1]?.row_id ?? null)}
           >
-            + Строка
+            <Plus className="h-4 w-4" /> Строка
           </Button>
 
           {current && (
-            <Button variant="outline" size="sm" onClick={() => setVolumeImportOpen(true)}>
-              Импорт томов
-            </Button>
-          )}
-          {current && (
-            <Button variant="outline" size="sm" onClick={() => setHandoffOpen(true)}>
-              Задания
-            </Button>
-          )}
-          {current && (
-            <Button variant="outline" size="sm" onClick={() => setApprovalOpen(true)}>
-              Согласование
-            </Button>
+            <>
+              <Button variant="outline" size="sm" onClick={() => setVolumeImportOpen(true)}>
+                <Boxes className="h-4 w-4" /> Тома
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setHandoffOpen(true)}>
+                <Send className="h-4 w-4" /> Задания
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setApprovalOpen(true)}>
+                <CheckSquare className="h-4 w-4" /> Согласование
+              </Button>
+            </>
           )}
         </div>
       </header>
 
       {current && (
-        <Dialog open={approvalOpen} onOpenChange={setApprovalOpen} title="Согласование версии">
-          <ApprovalPanel projectId={current.id} rows={store.rows} />
+        <Dialog open={approvalOpen} onOpenChange={setApprovalOpen}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Согласование версии</DialogTitle>
+            </DialogHeader>
+            <ApprovalPanel projectId={current.id} rows={store.rows} />
+          </DialogContent>
         </Dialog>
       )}
 
@@ -151,11 +167,16 @@ export function ScheduleEditor() {
 
       {/* Grid */}
       <div className="min-h-0 flex-1">
-        <ScheduleGrid rows={store.rows} cpmOutput={store.cpmOutput} onCommit={handleCommit} readOnly={current ? !collab.editable : false} />
+        <ScheduleGrid
+          rows={store.rows}
+          cpmOutput={store.cpmOutput}
+          onCommit={handleCommit}
+          readOnly={current ? !collab.editable : false}
+        />
       </div>
 
       {/* Status bar */}
-      <footer className="flex shrink-0 items-center gap-4 border-t border-[var(--border)] bg-gray-50 px-4 py-1 text-xs text-[var(--muted)]">
+      <footer className="flex shrink-0 items-center gap-4 border-t bg-muted px-4 py-1 text-xs text-muted-foreground">
         <span>{store.rows.length} строк</span>
         <span className="ml-auto">
           Двойной клик / Enter — редактировать · Tab — следующая ячейка · стрелки — навигация
