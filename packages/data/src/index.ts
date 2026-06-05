@@ -55,3 +55,7 @@ export {
   type ProjectVolume,
   type VolumeInput,
 } from './repositories/volumes.js';
+export {
+  saveScheduleDraft,
+  getVersionRevision,
+} from './repositories/scheduleSave.js';
