@@ -9,6 +9,7 @@ import { ScheduleGrid } from './ScheduleGrid';
 import { CpmSummary } from './CpmSummary';
 import { ApprovalPanel } from '@/components/approval/ApprovalPanel';
 import { BatchHandoffDialog } from '@/components/handoff/BatchHandoffDialog';
+import { VolumeImportDialog } from '@/components/handoff/VolumeImportDialog';
 import { takeScheduleHandoff } from '@/lib/scheduleHandoff';
 import { useProject } from '@/context/ProjectProvider';
 import { loadCurrentScheduleRows } from '@plancore/data';
@@ -20,6 +21,7 @@ export function ScheduleEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [handoffOpen, setHandoffOpen] = useState(false);
+  const [volumeImportOpen, setVolumeImportOpen] = useState(false);
 
   // On mount, prefer wizard/template handoff; otherwise load the current
   // project's saved schedule (if a project is selected in the Hub).
@@ -91,6 +93,11 @@ export function ScheduleEditor() {
           </Button>
 
           {current && (
+            <Button variant="outline" size="sm" onClick={() => setVolumeImportOpen(true)}>
+              Импорт томов
+            </Button>
+          )}
+          {current && (
             <Button variant="outline" size="sm" onClick={() => setHandoffOpen(true)}>
               Задания
             </Button>
@@ -115,6 +122,15 @@ export function ScheduleEditor() {
           open={handoffOpen}
           onOpenChange={setHandoffOpen}
           onApply={(rows) => store.appendRows(rows)}
+        />
+      )}
+
+      {current && (
+        <VolumeImportDialog
+          projectId={current.id}
+          open={volumeImportOpen}
+          onOpenChange={setVolumeImportOpen}
+          onImported={(n) => alert(`Импортировано томов: ${n}`)}
         />
       )}
 

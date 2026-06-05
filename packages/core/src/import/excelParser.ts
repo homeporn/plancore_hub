@@ -100,6 +100,34 @@ function normalizeHeader(header: string): string {
   return header.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
+/**
+ * Read the first sheet as a generic table: the raw header names plus each row
+ * as a header→string map. Used by flows that need user-driven column mapping
+ * (e.g. importing the project composition into the volume registry) rather than
+ * the fixed schedule schema. Pure.
+ */
+export function readSheetTable(buffer: ArrayBuffer): {
+  headers: string[];
+  rows: Record<string, string>[];
+} {
+  const workbook = XLSX.read(buffer, { type: 'array' });
+  const sheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  const rawData = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
+  if (rawData.length === 0) return { headers: [], rows: [] };
+
+  const headers = Object.keys(rawData[0]);
+  const rows = rawData.map((row) => {
+    const out: Record<string, string> = {};
+    for (const h of headers) {
+      const v = row[h];
+      out[h] = v != null ? String(v).trim() : '';
+    }
+    return out;
+  });
+  return { headers, rows };
+}
+
 export function parseExcelFile(buffer: ArrayBuffer): { tasks: TaskRow[]; missingColumns: string[] } {
   const workbook = XLSX.read(buffer, { type: 'array' });
   const sheetName = workbook.SheetNames[0];
