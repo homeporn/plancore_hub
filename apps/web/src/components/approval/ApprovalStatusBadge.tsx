@@ -1,14 +1,14 @@
-import { Badge, type BadgeProps } from '@plancore/ui';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { APPROVAL_STATUS_LABELS, type ApprovalStatus } from '@plancore/core';
 
-const TONE: Record<ApprovalStatus, BadgeProps['tone']> = {
-  draft: 'neutral',
+const VARIANT: Record<ApprovalStatus, BadgeProps['variant']> = {
+  draft: 'secondary',
   in_review: 'warning',
   approved: 'success',
-  rejected: 'critical',
+  rejected: 'destructive',
 };
 
 /** Coloured badge for a schedule version's approval status. */
 export function ApprovalStatusBadge({ status }: { status: ApprovalStatus }) {
-  return <Badge tone={TONE[status]}>{APPROVAL_STATUS_LABELS[status]}</Badge>;
+  return <Badge variant={VARIANT[status]}>{APPROVAL_STATUS_LABELS[status]}</Badge>;
 }
