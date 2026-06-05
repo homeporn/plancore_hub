@@ -1359,6 +1359,8 @@ export type Database = {
           done_volume: number | null
           forecast_finish: string | null
           forecast_start: string | null
+          handoff_status: string | null
+          handoff_to_department: string
           id: string
           is_delayed: boolean
           name: string
@@ -1382,6 +1384,7 @@ export type Database = {
           task_row_id: string | null
           task_status: string | null
           total_volume: number | null
+          volume_id: string | null
           wbs_code: string
           work: number | null
         }
@@ -1397,6 +1400,8 @@ export type Database = {
           done_volume?: number | null
           forecast_finish?: string | null
           forecast_start?: string | null
+          handoff_status?: string | null
+          handoff_to_department?: string
           id?: string
           is_delayed?: boolean
           name?: string
@@ -1420,6 +1425,7 @@ export type Database = {
           task_row_id?: string | null
           task_status?: string | null
           total_volume?: number | null
+          volume_id?: string | null
           wbs_code?: string
           work?: number | null
         }
@@ -1435,6 +1441,8 @@ export type Database = {
           done_volume?: number | null
           forecast_finish?: string | null
           forecast_start?: string | null
+          handoff_status?: string | null
+          handoff_to_department?: string
           id?: string
           is_delayed?: boolean
           name?: string
@@ -1458,10 +1466,18 @@ export type Database = {
           task_row_id?: string | null
           task_status?: string | null
           total_volume?: number | null
+          volume_id?: string | null
           wbs_code?: string
           work?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "psvt_volume_id_fkey"
+            columns: ["volume_id"]
+            isOneToOne: false
+            referencedRelation: "project_volumes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_schedule_version_tasks_schedule_version_id_fkey"
             columns: ["schedule_version_id"]
@@ -1669,6 +1685,57 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_volumes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          mark: string
+          name: string
+          project_id: string
+          section_id: string | null
+          set_name: string
+          sort_order: number
+        }
+        Insert: {
+          code?: string
+          created_at?: string
+          id?: string
+          mark?: string
+          name?: string
+          project_id: string
+          section_id?: string | null
+          set_name?: string
+          sort_order?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          mark?: string
+          name?: string
+          project_id?: string
+          section_id?: string | null
+          set_name?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_volumes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_volumes_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "ref_sections"
             referencedColumns: ["id"]
           },
         ]
