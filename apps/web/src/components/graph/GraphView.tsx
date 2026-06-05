@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -9,6 +8,7 @@ import {
   type LinkType,
 } from '@plancore/core';
 import { Button, Input, Badge } from '@plancore/ui';
+import { toast } from 'sonner';
 import { setScheduleHandoff } from '@/lib/scheduleHandoff';
 import { useGraphEditor } from './useGraphEditor';
 import { EditableGraphCanvas } from './EditableGraphCanvas';
@@ -32,14 +32,14 @@ export function GraphView() {
       try {
         const { tasks, missingColumns } = parseExcelFile(buf);
         if (missingColumns.length > 0) {
-          alert(`Отсутствуют колонки: ${missingColumns.join(', ')}`);
+          toast.warning('Не хватает колонок', { description: missingColumns.join(', ') });
           return;
         }
         ed.loadRows(importToSchedule(tasks));
       } catch {
-        alert('Не удалось прочитать файл Excel.');
+        toast.error('Не удалось прочитать файл Excel');
       }
-    }).catch(() => alert('Ошибка чтения файла.'));
+    }).catch(() => toast.error('Ошибка чтения файла'));
     e.target.value = '';
   }, [ed]);
 
@@ -52,9 +52,8 @@ export function GraphView() {
   const selectedRow = ed.rows.find((r) => r.row_id === ed.selectedId) ?? null;
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
-      <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-[var(--border)] bg-white px-4 py-2">
-        <Link href="/" className="text-sm text-[var(--muted)] hover:underline">← Главная</Link>
+    <div className="flex h-full flex-col overflow-hidden">
+      <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border bg-surface px-4 py-2">
         <h1 className="text-sm font-semibold">Холст: логический граф</h1>
 
         <div className="ml-2 flex items-center gap-1 rounded-lg border border-[var(--border)] p-0.5">

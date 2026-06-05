@@ -1,9 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { parseExcelFile, importToSchedule, type ScheduleRow } from '@plancore/core';
 import { Button, Dialog } from '@plancore/ui';
+import { toast } from 'sonner';
 import { useScheduleStore } from './useScheduleStore';
 import { useScheduleCollab } from './useScheduleCollab';
 import { ScheduleGrid } from './ScheduleGrid';
@@ -49,15 +49,16 @@ export function ScheduleEditor() {
       try {
         const { tasks, missingColumns } = parseExcelFile(buf);
         if (missingColumns.length > 0) {
-          alert(`Отсутствуют колонки: ${missingColumns.join(', ')}`);
+          toast.warning('Не хватает колонок', { description: missingColumns.join(', ') });
           return;
         }
         const rows = importToSchedule(tasks);
         store.loadRows(rows);
+        toast.success('Импорт завершён', { description: `Загружено строк: ${rows.length}` });
       } catch {
-        alert('Не удалось прочитать файл Excel.');
+        toast.error('Не удалось прочитать файл Excel');
       }
-    }).catch(() => alert('Ошибка чтения файла.'));
+    }).catch(() => toast.error('Ошибка чтения файла'));
     e.target.value = '';
   }, [store]);
 
@@ -66,10 +67,9 @@ export function ScheduleEditor() {
   }, [store]);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       {/* Toolbar */}
-      <header className="flex shrink-0 items-center gap-4 border-b border-[var(--border)] bg-white px-4 py-2">
-        <Link href="/" className="text-sm text-[var(--muted)] hover:underline">← Главная</Link>
+      <header className="flex shrink-0 items-center gap-4 border-b border-border bg-surface px-4 py-2">
         <h1 className="text-sm font-semibold">Конструктор графика</h1>
         {current && <span className="text-xs text-[var(--muted)]">· {current.name}</span>}
 
@@ -145,7 +145,7 @@ export function ScheduleEditor() {
           projectId={current.id}
           open={volumeImportOpen}
           onOpenChange={setVolumeImportOpen}
-          onImported={(n) => alert(`Импортировано томов: ${n}`)}
+          onImported={(n) => toast.success('Импорт томов', { description: `Импортировано: ${n}` })}
         />
       )}
 
