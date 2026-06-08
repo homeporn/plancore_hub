@@ -1,10 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Upload, Boxes, Send, CheckSquare, SlidersHorizontal } from 'lucide-react';
-import { parseExcelFile, importToSchedule, type ScheduleRow } from '@plancore/core';
+import { Upload, Boxes, Send, CheckSquare, SlidersHorizontal, AlertTriangle } from 'lucide-react';
+import {
+  parseExcelFile,
+  importToSchedule,
+  runAudit,
+  scheduleToAuditTasks,
+  type SeverityLevel,
+  type ScheduleRow,
+} from '@plancore/core';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -85,6 +93,23 @@ export function ScheduleEditor() {
   // A version that isn't editable (approved / in review) locks all edits.
   const readOnly = current ? !collab.editable : false;
 
+  // Live audit of the current rows for inline highlighting + a findings badge.
+  const audit = useMemo(() => runAudit(scheduleToAuditTasks(store.rows)), [store.rows]);
+  const rowIssues = useMemo(() => {
+    const rank: Record<SeverityLevel, number> = { info: 0, warning: 1, critical: 2 };
+    const bySdr = new Map<string, SeverityLevel>();
+    for (const f of audit.findings) {
+      const cur = bySdr.get(f.taskSdr);
+      if (!cur || rank[f.level] > rank[cur]) bySdr.set(f.taskSdr, f.level);
+    }
+    const m = new Map<string, SeverityLevel>();
+    for (const r of store.rows) {
+      const lvl = bySdr.get(r.sdr);
+      if (lvl) m.set(r.row_id, lvl);
+    }
+    return m;
+  }, [audit, store.rows]);
+
   // On mount, prefer wizard/template handoff; otherwise load the current
   // project's saved schedule (if a project is selected in the Hub).
   useEffect(() => {
@@ -133,7 +158,14 @@ export function ScheduleEditor() {
       const editing = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement;
       if (editing) return;
       const key = e.key.toLowerCase();
-      if (key === 'c' && store.selectedRowIds.length > 0) {
+      if (key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) store.redo();
+        else store.undo();
+      } else if (key === 'y') {
+        e.preventDefault();
+        store.redo();
+      } else if (key === 'c' && store.selectedRowIds.length > 0) {
         store.copyRows(store.selectedRowIds);
       } else if (key === 'v' && store.clipboardCount > 0) {
         e.preventDefault();
@@ -154,6 +186,13 @@ export function ScheduleEditor() {
         </div>
 
         <CpmSummary cpmOutput={store.cpmOutput} />
+
+        {audit.findings.length > 0 && (
+          <Badge variant={audit.criticalCount > 0 ? 'destructive' : 'warning'} className="gap-1">
+            <AlertTriangle className="h-3 w-3" />
+            Замечаний: {audit.findings.length}
+          </Badge>
+        )}
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {current && (
@@ -207,6 +246,10 @@ export function ScheduleEditor() {
         selectedCount={store.selectedRowIds.length}
         clipboardCount={store.clipboardCount}
         disabled={readOnly}
+        canUndo={store.canUndo}
+        canRedo={store.canRedo}
+        onUndo={() => store.undo()}
+        onRedo={() => store.redo()}
         onAddTask={() => store.addRowAfter(store.selectedRowIds.at(-1) ?? store.rows.at(-1)?.row_id ?? null)}
         onAddMilestone={() => store.addRowAfter(store.selectedRowIds.at(-1) ?? store.rows.at(-1)?.row_id ?? null, true)}
         onDuplicate={() => store.duplicateRows(store.selectedRowIds)}
@@ -279,6 +322,7 @@ export function ScheduleEditor() {
           gridTheme={view.theme}
           customColumns={customColumns}
           onCustomCommit={store.updateCustom}
+          rowIssues={rowIssues}
         />
       </div>
 

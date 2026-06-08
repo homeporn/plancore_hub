@@ -65,7 +65,7 @@ function cloneRow(row: ScheduleRow): ScheduleRow {
 export type CellId = string; // `${rowId}:${colId}`
 
 export function useScheduleStore(initialRows: ScheduleRow[] = []) {
-  const [rows, setRows] = useState<ScheduleRow[]>(
+  const [rows, setRowsRaw] = useState<ScheduleRow[]>(
     initialRows.length > 0 ? initialRows : [makeEmptyRow(0)]
   );
   const [calendar] = useState<WorkCalendar>(DEFAULT_CALENDAR);
@@ -86,6 +86,48 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
     [levels],
   );
 
+  // Undo/redo history of the rows array.
+  const past = useRef<ScheduleRow[][]>([]);
+  const future = useRef<ScheduleRow[][]>([]);
+  const [histVer, setHistVer] = useState(0);
+
+  /** Apply a rows change and record the previous state for undo. */
+  const mutate = useCallback((updater: (prev: ScheduleRow[]) => ScheduleRow[]) => {
+    setRowsRaw((prev) => {
+      past.current.push(prev);
+      if (past.current.length > 100) past.current.shift();
+      future.current = [];
+      return updater(prev);
+    });
+    setHistVer((v) => v + 1);
+  }, []);
+
+  const undo = useCallback(() => {
+    if (past.current.length === 0) return;
+    setRowsRaw((prev) => {
+      future.current.push(prev);
+      return past.current.pop()!;
+    });
+    setSelectedRowIds([]);
+    setHistVer((v) => v + 1);
+  }, []);
+
+  const redo = useCallback(() => {
+    if (future.current.length === 0) return;
+    setRowsRaw((prev) => {
+      past.current.push(prev);
+      return future.current.pop()!;
+    });
+    setSelectedRowIds([]);
+    setHistVer((v) => v + 1);
+  }, []);
+
+  const { canUndo, canRedo } = useMemo(
+    () => ({ canUndo: past.current.length > 0, canRedo: future.current.length > 0 }),
+    // histVer drives recomputation when the stacks change.
+    [histVer],
+  );
+
   const cpmOutput = useMemo<CpmOutput>(() => runCpm(rows, calendar), [rows, calendar]);
 
   const updateCell = useCallback(<K extends keyof ScheduleRow>(
@@ -93,14 +135,14 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
     field: K,
     value: ScheduleRow[K],
   ) => {
-    setRows(prev =>
+    mutate(prev =>
       prev.map(r => r.row_id === rowId ? { ...r, [field]: value } : r)
     );
   }, []);
 
   /** Set a single user-defined custom column value on a row. */
   const updateCustom = useCallback((rowId: string, key: string, value: string) => {
-    setRows(prev =>
+    mutate(prev =>
       prev.map(r =>
         r.row_id === rowId ? { ...r, custom: { ...(r.custom ?? {}), [key]: value } } : r,
       ),
@@ -109,7 +151,7 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
 
   /** Insert a new task/milestone after a row (or at the end), and select it. */
   const addRowAfter = useCallback((afterId: string | null, milestone = false) => {
-    setRows(prev => {
+    mutate(prev => {
       const idx = afterId ? prev.findIndex(r => r.row_id === afterId) : prev.length - 1;
       const newRow = makeEmptyRow(idx + 1, milestone);
       const next = [...prev];
@@ -120,14 +162,14 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
   }, []);
 
   const deleteRow = useCallback((rowId: string) => {
-    setRows(prev => prev.filter(r => r.row_id !== rowId));
+    mutate(prev => prev.filter(r => r.row_id !== rowId));
   }, []);
 
   /** Delete every selected row, then clear the selection. */
   const deleteRows = useCallback((ids: string[]) => {
     if (ids.length === 0) return;
     const set = new Set(ids);
-    setRows(prev => {
+    mutate(prev => {
       const next = prev.filter(r => !set.has(r.row_id));
       return next.length > 0 ? next : [makeEmptyRow(0)];
     });
@@ -138,7 +180,7 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
   const duplicateRows = useCallback((ids: string[]) => {
     if (ids.length === 0) return;
     const set = new Set(ids);
-    setRows(prev => {
+    mutate(prev => {
       const copies = prev.filter(r => set.has(r.row_id)).map(cloneRow);
       if (copies.length === 0) return prev;
       const lastIdx = Math.max(...prev.map((r, i) => (set.has(r.row_id) ? i : -1)));
@@ -150,7 +192,7 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
   }, []);
 
   const moveRow = useCallback((fromId: string, toId: string) => {
-    setRows(prev => {
+    mutate(prev => {
       const from = prev.findIndex(r => r.row_id === fromId);
       const to = prev.findIndex(r => r.row_id === toId);
       if (from === -1 || to === -1 || from === to) return prev;
@@ -165,7 +207,7 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
   const moveRowsUp = useCallback((ids: string[]) => {
     if (ids.length === 0) return;
     const set = new Set(ids);
-    setRows(prev => {
+    mutate(prev => {
       const next = [...prev];
       for (let i = 1; i < next.length; i++) {
         if (set.has(next[i].row_id) && !set.has(next[i - 1].row_id)) {
@@ -180,7 +222,7 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
   const moveRowsDown = useCallback((ids: string[]) => {
     if (ids.length === 0) return;
     const set = new Set(ids);
-    setRows(prev => {
+    mutate(prev => {
       const next = [...prev];
       for (let i = next.length - 2; i >= 0; i--) {
         if (set.has(next[i].row_id) && !set.has(next[i + 1].row_id)) {
@@ -195,7 +237,7 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
   const copyRows = useCallback((ids: string[]) => {
     if (ids.length === 0) return;
     const set = new Set(ids);
-    setRows(prev => {
+    setRowsRaw(prev => {
       clipboard.current = prev.filter(r => set.has(r.row_id)).map(r => ({ ...r }));
       setClipboardCount(clipboard.current.length);
       return prev;
@@ -206,7 +248,7 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
   const pasteRows = useCallback(() => {
     if (clipboard.current.length === 0) return;
     const copies = clipboard.current.map(cloneRow);
-    setRows(prev => {
+    mutate(prev => {
       const lastSel = selectedRowIds.length > 0
         ? Math.max(...prev.map((r, i) => (selectedRowIds.includes(r.row_id) ? i : -1)))
         : prev.length - 1;
@@ -225,7 +267,7 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
     rows.forEach((r, i) => { if (sel.has(r.row_id)) arr[i] = arr[i] + delta; });
     const clamped = clampLevels(arr);
     const codes = outlineNumbers(clamped);
-    setRows((prev) => prev.map((r, i) => (r.sdr === codes[i] ? r : { ...r, sdr: codes[i] })));
+    mutate((prev) => prev.map((r, i) => (r.sdr === codes[i] ? r : { ...r, sdr: codes[i] })));
     const nl: Record<string, number> = {};
     rows.forEach((r, i) => { nl[r.row_id] = clamped[i]; });
     setLevels(nl);
@@ -238,7 +280,7 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
   const renumber = useCallback(() => {
     const clamped = clampLevels(rows.map((r) => levelOf(r)));
     const codes = outlineNumbers(clamped);
-    setRows((prev) => prev.map((r, i) => (r.sdr === codes[i] ? r : { ...r, sdr: codes[i] })));
+    mutate((prev) => prev.map((r, i) => (r.sdr === codes[i] ? r : { ...r, sdr: codes[i] })));
     const nl: Record<string, number> = {};
     rows.forEach((r, i) => { nl[r.row_id] = clamped[i]; });
     setLevels(nl);
@@ -275,7 +317,10 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
   }, [rows, levelOf, collapsedIds]);
 
   const loadRows = useCallback((newRows: ScheduleRow[]) => {
-    setRows(newRows);
+    setRowsRaw(newRows);
+    past.current = [];
+    future.current = [];
+    setHistVer((v) => v + 1);
     setSelectedRowIds([]);
     setCollapsedIds(new Set());
     const nl: Record<string, number> = {};
@@ -285,7 +330,7 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
 
   const appendRows = useCallback((extra: ScheduleRow[]) => {
     if (extra.length === 0) return;
-    setRows(prev => [...prev, ...extra]);
+    mutate(prev => [...prev, ...extra]);
   }, []);
 
   return {
@@ -307,6 +352,10 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
     outdentRows,
     renumber,
     toggleCollapse,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
     updateCell,
     updateCustom,
     addRowAfter,

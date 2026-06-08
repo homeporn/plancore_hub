@@ -81,6 +81,8 @@ interface ScheduleGridProps {
   customColumns?: CustomColumn[];
   /** Commit a custom column value edit. */
   onCustomCommit?: (rowId: string, key: string, value: string) => void;
+  /** Worst audit severity per row id, for inline highlighting. */
+  rowIssues?: Map<string, 'critical' | 'warning' | 'info'>;
 }
 
 /** Name cell: WBS indentation + collapse chevron for group rows. */
@@ -218,6 +220,7 @@ export function ScheduleGrid({
   gridTheme = 'light',
   customColumns,
   onCustomCommit,
+  rowIssues,
 }: ScheduleGridProps) {
   const apiRef = useRef<GridApi<ScheduleRow> | null>(null);
 
@@ -339,9 +342,12 @@ export function ScheduleGrid({
   const getRowClass = useCallback(
     (p: RowClassParams<ScheduleRow>) => {
       if (!p.data) return undefined;
+      const issue = rowIssues?.get(p.data.row_id);
+      if (issue === 'critical') return 'bg-red-50';
+      if (issue === 'warning') return 'bg-amber-50';
       return cpmOutput.results.get(p.data.row_id)?.is_critical ? 'bg-red-50' : undefined;
     },
-    [cpmOutput],
+    [cpmOutput, rowIssues],
   );
 
   return (

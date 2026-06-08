@@ -2,7 +2,7 @@
 
 import {
   Plus, Flag, Copy, ClipboardPaste, Trash2, ArrowUp, ArrowDown,
-  IndentIncrease, IndentDecrease, ListOrdered,
+  IndentIncrease, IndentDecrease, ListOrdered, Undo2, Redo2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -11,6 +11,10 @@ interface Props {
   selectedCount: number;
   clipboardCount: number;
   disabled?: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
   onAddTask: () => void;
   onAddMilestone: () => void;
   onDuplicate: () => void;
@@ -33,6 +37,10 @@ export function EditorTaskBar({
   selectedCount,
   clipboardCount,
   disabled = false,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
   onAddTask,
   onAddMilestone,
   onDuplicate,
@@ -50,6 +58,15 @@ export function EditorTaskBar({
 
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b bg-muted/40 px-4 py-1.5">
+      <Button variant="ghost" size="sm" disabled={blocked || !canUndo} onClick={onUndo} title="Отменить (Ctrl+Z)">
+        <Undo2 className="h-4 w-4" />
+      </Button>
+      <Button variant="ghost" size="sm" disabled={blocked || !canRedo} onClick={onRedo} title="Повторить (Ctrl+Shift+Z)">
+        <Redo2 className="h-4 w-4" />
+      </Button>
+
+      <Separator orientation="vertical" className="mx-1 h-5" />
+
       <Button variant="ghost" size="sm" disabled={blocked} onClick={onAddTask}>
         <Plus className="h-4 w-4" /> Задача
       </Button>
