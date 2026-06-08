@@ -9,7 +9,11 @@ import {
 } from '@plancore/core';
 import { ApprovalStore } from '@plancore/store';
 import type { ScheduleVersionInfo, ApprovalHistoryEntry } from '@plancore/data';
-import { Alert, Button } from '@plancore/ui';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 import { getBrowserClient } from '@/lib/supabase/browser';
 import { useAuth } from '@/lib/useAuth';
 import { ApprovalStatusBadge } from './ApprovalStatusBadge';
@@ -91,9 +95,13 @@ export function ApprovalPanel({ projectId, rows = [] }: Props) {
     }
   }
 
-  if (loading) return <p className="text-xs text-[var(--muted)]">Загрузка…</p>;
+  if (loading) return <Skeleton className="h-32 w-full" />;
   if (!version) {
-    return <p className="text-xs text-[var(--muted)]">Нет текущей версии графика для согласования.</p>;
+    return (
+      <p className="text-sm text-muted-foreground">
+        Нет текущей версии графика для согласования.
+      </p>
+    );
   }
 
   const actions = availableApprovalActions({ status: version.approvalStatus }, role);
@@ -102,33 +110,36 @@ export function ApprovalPanel({ projectId, rows = [] }: Props) {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium">Версия {version.versionNumber}</span>
-        {version.versionLabel && <span className="text-xs text-[var(--muted)]">{version.versionLabel}</span>}
+        {version.versionLabel && (
+          <span className="text-xs text-muted-foreground">{version.versionLabel}</span>
+        )}
         <ApprovalStatusBadge status={version.approvalStatus} />
       </div>
 
       {varianceCount !== null && (
-        <Alert tone={varianceCount > 0 ? 'warning' : 'success'}>
-          {varianceCount > 0
-            ? `Отклонений от базового плана: ${varianceCount}`
-            : 'Нет отклонений от базового плана.'}
+        <Alert variant={varianceCount > 0 ? 'warning' : 'success'}>
+          <AlertDescription>
+            {varianceCount > 0
+              ? `Отклонений от базового плана: ${varianceCount}`
+              : 'Нет отклонений от базового плана.'}
+          </AlertDescription>
         </Alert>
       )}
 
       {actions.length > 0 ? (
         <div className="space-y-2">
-          <textarea
+          <Textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Комментарий (необязательно)"
             rows={2}
-            className="w-full rounded-md border border-[var(--border)] px-2 py-1 text-sm"
           />
           <div className="flex flex-wrap gap-1.5">
             {actions.map((a) => (
               <Button
                 key={a}
                 size="sm"
-                variant={a === 'approve' ? 'primary' : a === 'reject' ? 'danger' : 'outline'}
+                variant={a === 'approve' ? 'default' : a === 'reject' ? 'destructive' : 'outline'}
                 disabled={busy !== null}
                 onClick={() => void run(a)}
               >
@@ -138,28 +149,34 @@ export function ApprovalPanel({ projectId, rows = [] }: Props) {
           </div>
         </div>
       ) : (
-        <p className="text-xs text-[var(--muted)]">
+        <p className="text-sm text-muted-foreground">
           {role === 'viewer' ? 'У вас нет прав на согласование.' : 'Действия недоступны в текущем статусе.'}
         </p>
       )}
 
-      {error && <Alert tone="critical">{error}</Alert>}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <Separator />
 
       <div>
-        <h4 className="mb-1 text-xs font-semibold uppercase text-[var(--muted)]">История</h4>
+        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          История
+        </h4>
         {history.length === 0 ? (
-          <p className="text-xs text-[var(--muted)]">Решений пока нет.</p>
+          <p className="text-xs text-muted-foreground">Решений пока нет.</p>
         ) : (
-          <ul className="space-y-1 text-xs">
+          <ul className="space-y-1.5 text-xs">
             {history.map((h) => (
               <li key={h.id} className="flex flex-wrap items-center gap-1.5">
                 <span className="font-medium">{ACTION_LABELS[h.action]}</span>
-                <span className="text-[var(--muted)]">
-                  {h.fromStatus} → {h.toStatus}
-                </span>
-                <span className="text-[var(--muted)]">· {h.actorRole}</span>
-                <span className="text-[var(--muted)]">· {new Date(h.decidedAt).toLocaleString('ru')}</span>
-                {h.comment && <span className="text-[var(--muted)]">— {h.comment}</span>}
+                <span className="text-muted-foreground">{h.fromStatus} → {h.toStatus}</span>
+                <span className="text-muted-foreground">· {h.actorRole}</span>
+                <span className="text-muted-foreground">· {new Date(h.decidedAt).toLocaleString('ru')}</span>
+                {h.comment && <span className="text-muted-foreground">— {h.comment}</span>}
               </li>
             ))}
           </ul>

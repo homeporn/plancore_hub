@@ -1346,6 +1346,44 @@ export type Database = {
           },
         ]
       }
+      project_custom_columns: {
+        Row: {
+          col_type: string
+          created_at: string
+          id: string
+          key: string
+          label: string
+          project_id: string
+          sort_order: number
+        }
+        Insert: {
+          col_type?: string
+          created_at?: string
+          id?: string
+          key: string
+          label: string
+          project_id: string
+          sort_order?: number
+        }
+        Update: {
+          col_type?: string
+          created_at?: string
+          id?: string
+          key?: string
+          label?: string
+          project_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_custom_columns_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_schedule_version_tasks: {
         Row: {
           actual_finish: string | null
@@ -1354,6 +1392,7 @@ export type Database = {
           baseline_finish: string | null
           baseline_start: string | null
           comment: string
+          custom: Json
           current_total_productivity: number | null
           department: string
           done_volume: number | null
@@ -1395,6 +1434,7 @@ export type Database = {
           baseline_finish?: string | null
           baseline_start?: string | null
           comment?: string
+          custom?: Json
           current_total_productivity?: number | null
           department?: string
           done_volume?: number | null
@@ -1436,6 +1476,7 @@ export type Database = {
           baseline_finish?: string | null
           baseline_start?: string | null
           comment?: string
+          custom?: Json
           current_total_productivity?: number | null
           department?: string
           done_volume?: number | null

@@ -59,3 +59,11 @@ export {
   saveScheduleDraft,
   getVersionRevision,
 } from './repositories/scheduleSave.js';
+export {
+  listCustomColumns,
+  createCustomColumn,
+  deleteCustomColumn,
+  type CustomColumn,
+  type CustomColumnInput,
+  type CustomColumnType,
+} from './repositories/customColumns.js';

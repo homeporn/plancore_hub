@@ -75,7 +75,18 @@ export function versionTaskToScheduleRow(row: VersionTaskRow): ScheduleRow {
     handoffToDepartment: row.handoff_to_department,
     volumeId: row.volume_id,
     comment: row.comment,
+    custom: parseCustom(row.custom),
   };
+}
+
+/** Parse the `custom` jsonb into a flat string map. */
+function parseCustom(json: unknown): Record<string, string> {
+  if (json === null || typeof json !== 'object' || Array.isArray(json)) return {};
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(json as Record<string, unknown>)) {
+    out[k] = v == null ? '' : String(v);
+  }
+  return out;
 }
 
 /** Canonical ScheduleRow → DB insert payload for a given schedule version. */
@@ -114,5 +125,6 @@ export function scheduleRowToVersionTaskInsert(
     handoff_to_department: row.handoffToDepartment,
     volume_id: row.volumeId,
     comment: row.comment,
+    custom: (row.custom ?? {}) as VersionTaskInsert['custom'],
   };
 }

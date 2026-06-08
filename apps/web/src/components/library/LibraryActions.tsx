@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import type { LibraryStore } from '@plancore/store';
 import {
   availableActions,
@@ -8,6 +9,7 @@ import {
   type LibraryAction,
   type LibraryItemState,
 } from '@plancore/core';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   store: LibraryStore;
@@ -29,7 +31,6 @@ const ACTION_LABELS: Record<LibraryAction, string> = {
 /** Workflow action buttons for a library item, driven by the shared state machine. */
 export function LibraryActions({ store, item, onChanged }: Props) {
   const [busy, setBusy] = useState<LibraryAction | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const state: LibraryItemState = {
     status: item.status as LibraryItemState['status'],
@@ -40,35 +41,35 @@ export function LibraryActions({ store, item, onChanged }: Props) {
 
   async function run(action: LibraryAction) {
     setBusy(action);
-    setError(null);
     try {
       onChanged(await store.runAction(item.id, action));
+      toast.success(ACTION_LABELS[action]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось выполнить действие');
+      toast.error('Не удалось выполнить действие', {
+        description: e instanceof Error ? e.message : undefined,
+      });
     } finally {
       setBusy(null);
     }
   }
 
   if (actions.length === 0) {
-    return <p className="text-xs text-[var(--muted)]">Действия недоступны.</p>;
+    return <p className="text-xs text-muted-foreground">Действия недоступны.</p>;
   }
 
   return (
-    <div className="space-y-1">
-      <div className="flex flex-wrap gap-1.5">
-        {actions.map((a) => (
-          <button
-            key={a}
-            onClick={() => void run(a)}
-            disabled={busy !== null}
-            className="rounded-md border border-[var(--border)] px-2 py-1 text-xs hover:bg-gray-50 disabled:opacity-60"
-          >
-            {busy === a ? '…' : ACTION_LABELS[a]}
-          </button>
-        ))}
-      </div>
-      {error && <p className="text-xs text-[var(--critical)]">{error}</p>}
+    <div className="flex flex-wrap gap-1.5">
+      {actions.map((a) => (
+        <Button
+          key={a}
+          variant="outline"
+          size="sm"
+          onClick={() => void run(a)}
+          disabled={busy !== null}
+        >
+          {busy === a ? '…' : ACTION_LABELS[a]}
+        </Button>
+      ))}
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ProjectProvider } from '@/context/ProjectProvider';
+import { AppShell } from '@/components/shell/AppShell';
+import { Toaster } from '@/components/ui/sonner';
 
 export const metadata: Metadata = {
   title: 'PlanCore — аудит календарно-сетевых графиков',
@@ -16,7 +18,10 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <body>
-        <ProjectProvider>{children}</ProjectProvider>
+        <ProjectProvider>
+          <AppShell>{children}</AppShell>
+        </ProjectProvider>
+        <Toaster richColors position="bottom-right" />
       </body>
     </html>
   );

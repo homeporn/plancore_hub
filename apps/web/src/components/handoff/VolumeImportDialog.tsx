@@ -1,9 +1,18 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { Upload } from 'lucide-react';
 import { readSheetTable } from '@plancore/core';
 import { createVolumesBatch, type VolumeInput } from '@plancore/data';
-import { Alert, Button, Dialog } from '@plancore/ui';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { getBrowserClient } from '@/lib/supabase/browser';
 
 // Volume fields the user maps Excel columns onto. `name` is required.
@@ -13,6 +22,9 @@ const FIELDS: { key: keyof VolumeInput; label: string; required?: boolean }[] = 
   { key: 'mark', label: 'Марка' },
   { key: 'setName', label: 'Комплект' },
 ];
+
+const SELECT_CLASS =
+  'flex-1 rounded-md border border-input bg-transparent px-2 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
 
 interface Props {
   projectId: string;
@@ -30,42 +42,38 @@ export function VolumeImportDialog({ projectId, open, onOpenChange, onImported }
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<Record<string, string>[]>([]);
   const [mapping, setMapping] = useState<Partial<Record<keyof VolumeInput, string>>>({});
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   function reset() {
     setHeaders([]);
     setRows([]);
     setMapping({});
-    setError(null);
   }
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    setError(null);
     file
       .arrayBuffer()
       .then((buf) => {
         const { headers: h, rows: r } = readSheetTable(buf);
         if (h.length === 0) {
-          setError('Файл пуст или не содержит данных.');
+          toast.error('Файл пуст или не содержит данных');
           return;
         }
         setHeaders(h);
         setRows(r);
-        // Pre-guess the name column by header text.
         const nameGuess = h.find((x) => /наимен|назв|том|name/i.test(x));
         setMapping(nameGuess ? { name: nameGuess } : {});
       })
-      .catch(() => setError('Не удалось прочитать файл Excel.'));
+      .catch(() => toast.error('Не удалось прочитать файл Excel'));
   }
 
   async function doImport() {
     const nameCol = mapping.name;
     if (!nameCol) {
-      setError('Укажите колонку для «Наименование».');
+      toast.warning('Укажите колонку для «Наименование»');
       return;
     }
     const inputs: VolumeInput[] = rows
@@ -79,18 +87,19 @@ export function VolumeImportDialog({ projectId, open, onOpenChange, onImported }
       .filter((v) => v.name.length > 0);
 
     if (inputs.length === 0) {
-      setError('Нет строк с заполненным наименованием.');
+      toast.warning('Нет строк с заполненным наименованием');
       return;
     }
     setBusy(true);
-    setError(null);
     try {
       const created = await createVolumesBatch(client, projectId, inputs);
       onImported(created.length);
       reset();
       onOpenChange(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось импортировать тома');
+      toast.error('Не удалось импортировать тома', {
+        description: e instanceof Error ? e.message : undefined,
+      });
     } finally {
       setBusy(false);
     }
@@ -107,71 +116,73 @@ export function VolumeImportDialog({ projectId, open, onOpenChange, onImported }
         if (!o) reset();
         onOpenChange(o);
       }}
-      title="Импорт состава проекта"
-      description="Загрузите Excel и сопоставьте колонки с полями реестра томов."
-      className="max-w-2xl"
     >
-      <div className="space-y-4">
-        <div>
-          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-            {headers.length > 0 ? 'Выбрать другой файл' : 'Выбрать файл Excel'}
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls"
-            className="hidden"
-            onChange={handleFile}
-          />
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Импорт состава проекта</DialogTitle>
+          <DialogDescription>
+            Загрузите Excel и сопоставьте колонки с полями реестра томов.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+              <Upload className="h-4 w-4" />
+              {headers.length > 0 ? 'Другой файл' : 'Выбрать файл Excel'}
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={handleFile}
+            />
+            {headers.length > 0 && (
+              <span className="text-xs text-muted-foreground">Строк в файле: {rows.length}</span>
+            )}
+          </div>
+
           {headers.length > 0 && (
-            <span className="ml-2 text-xs text-[var(--muted)]">Строк в файле: {rows.length}</span>
+            <div className="space-y-2">
+              {FIELDS.map((f) => (
+                <div key={f.key} className="flex items-center gap-2">
+                  <label className="w-32 text-sm">
+                    {f.label}
+                    {f.required && <span className="text-destructive"> *</span>}
+                  </label>
+                  <select
+                    value={mapping[f.key] ?? ''}
+                    onChange={(e) =>
+                      setMapping((prev) => ({ ...prev, [f.key]: e.target.value || undefined }))
+                    }
+                    className={SELECT_CLASS}
+                  >
+                    <option value="">— не импортировать —</option>
+                    {headers.map((h) => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-xs text-muted-foreground">
+                  Будет добавлено томов: {previewCount}
+                </span>
+                <Button
+                  size="sm"
+                  className="ml-auto"
+                  disabled={busy || previewCount === 0}
+                  onClick={() => void doImport()}
+                >
+                  {busy ? '…' : 'Импортировать'}
+                </Button>
+              </div>
+            </div>
           )}
         </div>
-
-        {headers.length > 0 && (
-          <div className="space-y-2">
-            {FIELDS.map((f) => (
-              <div key={f.key} className="flex items-center gap-2">
-                <label className="w-32 text-sm">
-                  {f.label}
-                  {f.required && <span className="text-[var(--critical)]"> *</span>}
-                </label>
-                <select
-                  value={mapping[f.key] ?? ''}
-                  onChange={(e) =>
-                    setMapping((prev) => ({ ...prev, [f.key]: e.target.value || undefined }))
-                  }
-                  className="flex-1 rounded-md border border-[var(--border)] px-2 py-1.5 text-sm"
-                >
-                  <option value="">— не импортировать —</option>
-                  {headers.map((h) => (
-                    <option key={h} value={h}>
-                      {h}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
-
-            <div className="flex items-center gap-2 pt-1">
-              <span className="text-xs text-[var(--muted)]">
-                Будет добавлено томов: {previewCount}
-              </span>
-              <Button
-                variant="primary"
-                size="sm"
-                className="ml-auto"
-                disabled={busy || previewCount === 0}
-                onClick={() => void doImport()}
-              >
-                {busy ? '…' : 'Импортировать'}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {error && <Alert tone="critical">{error}</Alert>}
-      </div>
+      </DialogContent>
     </Dialog>
   );
 }

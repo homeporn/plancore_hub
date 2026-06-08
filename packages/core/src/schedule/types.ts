@@ -109,4 +109,7 @@ export interface ScheduleRow {
   volumeId: string | null;
 
   comment: string;
+
+  /** User-defined custom column values, keyed by custom column key. */
+  custom?: Record<string, string>;
 }

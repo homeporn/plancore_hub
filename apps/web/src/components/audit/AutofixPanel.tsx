@@ -1,13 +1,15 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { CheckCircle2, Wand2 } from 'lucide-react';
 import {
   analyzeFixes,
   applyFixes,
   type FixProposal,
   type ScheduleRow,
 } from '@plancore/core';
-import { Button, Alert, Card } from '@plancore/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface AutofixPanelProps {
   rows: ScheduleRow[];
@@ -25,7 +27,9 @@ export function AutofixPanel({ rows, onApply }: AutofixPanelProps) {
 
   if (proposals.length === 0) {
     return (
-      <Alert tone="success">✓ Автоматических исправлений не требуется.</Alert>
+      <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+        <CheckCircle2 className="h-4 w-4" /> Автоматических исправлений не требуется.
+      </div>
     );
   }
 
@@ -54,36 +58,47 @@ export function AutofixPanel({ rows, onApply }: AutofixPanelProps) {
   }
 
   return (
-    <Card className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Автокоррекция · {proposals.length} предложений</h3>
+    <Card>
+      <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Wand2 className="h-4 w-4 text-muted-foreground" />
+          Автокоррекция · {proposals.length} предложений
+        </CardTitle>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={toggleAll}>
             {allSelected ? 'Снять все' : 'Выбрать все'}
           </Button>
           <Button size="sm" onClick={apply} disabled={selected.size === 0}>
-            Исправить выбранное ({selected.size})
+            Исправить ({selected.size})
           </Button>
         </div>
-      </div>
-
-      <ul className="divide-y divide-[var(--border)]">
-        {proposals.map((p) => {
-          const k = key(p);
-          return (
-            <li key={k} className="flex items-center gap-3 py-2 text-sm">
-              <input type="checkbox" checked={selected.has(k)} onChange={() => toggle(k)} />
-              <span className="font-mono text-xs text-[var(--muted)] w-16 shrink-0">{p.sdr || '—'}</span>
-              <span className="flex-1">{p.label}</span>
-              <span className="text-xs text-[var(--muted)]">
-                <span className="line-through">{p.before}</span>
-                {' → '}
-                <span className="text-[var(--foreground)]">{p.after}</span>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+      </CardHeader>
+      <CardContent>
+        <ul className="divide-y">
+          {proposals.map((p) => {
+            const k = key(p);
+            return (
+              <li key={k} className="flex items-center gap-3 py-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={selected.has(k)}
+                  onChange={() => toggle(k)}
+                  className="h-4 w-4 accent-primary"
+                />
+                <span className="w-16 shrink-0 font-mono text-xs text-muted-foreground">
+                  {p.sdr || '—'}
+                </span>
+                <span className="flex-1">{p.label}</span>
+                <span className="text-xs text-muted-foreground">
+                  <span className="line-through">{p.before}</span>
+                  {' → '}
+                  <span className="text-foreground">{p.after}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </CardContent>
     </Card>
   );
 }
