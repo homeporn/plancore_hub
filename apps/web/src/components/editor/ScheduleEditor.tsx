@@ -6,6 +6,7 @@ import { Upload, Boxes, Send, CheckSquare, SlidersHorizontal, AlertTriangle, Cal
 import {
   parseExcelFile,
   importToSchedule,
+  parseMsProjectXml,
   runAudit,
   scheduleToAuditTasks,
   offsetToDate,
@@ -152,6 +153,27 @@ export function ScheduleEditor() {
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const isXml = /\.xml$/i.test(file.name);
+
+    if (isXml) {
+      // MS Project XML (MSPDI) import.
+      file.text().then((text) => {
+        try {
+          const rows = parseMsProjectXml(text);
+          if (rows.length === 0) {
+            toast.warning('В файле не найдено задач MS Project');
+            return;
+          }
+          store.loadRows(rows);
+          toast.success('Импорт MS Project завершён', { description: `Загружено задач: ${rows.length}` });
+        } catch {
+          toast.error('Не удалось разобрать MS Project XML');
+        }
+      }).catch(() => toast.error('Ошибка чтения файла'));
+      e.target.value = '';
+      return;
+    }
+
     file.arrayBuffer().then(buf => {
       try {
         const { tasks, missingColumns } = parseExcelFile(buf);
@@ -251,12 +273,12 @@ export function ScheduleEditor() {
           </Button>
 
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="h-4 w-4" /> Импорт Excel
+            <Upload className="h-4 w-4" /> Импорт Excel / MS Project
           </Button>
           <input
             ref={fileInputRef}
             type="file"
-            accept=".xlsx,.xls"
+            accept=".xlsx,.xls,.xml"
             className="hidden"
             onChange={handleFile}
           />
