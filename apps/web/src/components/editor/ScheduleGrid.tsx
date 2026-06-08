@@ -19,6 +19,7 @@ import {
 } from 'ag-grid-community';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import type { ICellRendererParams } from 'ag-grid-community';
+import type { CustomColumn } from '@plancore/data';
 import type { ScheduleRow, CpmOutput, CpmResult, HandoffStatus } from '@plancore/core';
 import {
   HANDOFF_STATUS_LABELS,
@@ -76,6 +77,10 @@ interface ScheduleGridProps {
   density?: Density;
   /** Grid colour scheme. */
   gridTheme?: 'light' | 'dark';
+  /** User-defined custom columns (appended after the built-in ones). */
+  customColumns?: CustomColumn[];
+  /** Commit a custom column value edit. */
+  onCustomCommit?: (rowId: string, key: string, value: string) => void;
 }
 
 /** Name cell: WBS indentation + collapse chevron for group rows. */
@@ -211,6 +216,8 @@ export function ScheduleGrid({
   visibleColIds,
   density = 'normal',
   gridTheme = 'light',
+  customColumns,
+  onCustomCommit,
 }: ScheduleGridProps) {
   const apiRef = useRef<GridApi<ScheduleRow> | null>(null);
 
@@ -233,33 +240,48 @@ export function ScheduleGrid({
   }, [rows]);
 
   const columnDefs = useMemo<ColDef<ScheduleRow>[]>(
-    () => COLUMNS.filter((c) => !visibleSet || c.locked || visibleSet.has(c.id as string)).map((c) => {
-      let def: ColDef<ScheduleRow>;
-      if (c.id === 'name') {
-        def = {
-          ...toColDef(c, cpmOutput),
-          cellRenderer: NameCell,
-          cellRendererParams: { rowMeta, onToggleCollapse },
-        };
-      } else if (c.id === 'predecessors') {
-        def = {
-          headerName: c.label,
-          width: c.width,
-          editable: c.editable,
-          resizable: true,
-          sortable: false,
-          colId: 'predecessors',
-          valueGetter: (p) =>
-            p.data ? formatPredecessors(p.data.predecessors, idToSdr) : '',
-          valueParser: (p) =>
-            parsePredecessors(String(p.newValue ?? ''), sdrToId, p.data?.row_id),
-        };
-      } else {
-        def = toColDef(c, cpmOutput);
-      }
-      return readOnly ? { ...def, editable: false } : def;
-    }),
-    [cpmOutput, readOnly, idToSdr, sdrToId, rowMeta, onToggleCollapse, visibleSet],
+    () => {
+      const builtins = COLUMNS.filter((c) => !visibleSet || c.locked || visibleSet.has(c.id as string)).map((c) => {
+        let def: ColDef<ScheduleRow>;
+        if (c.id === 'name') {
+          def = {
+            ...toColDef(c, cpmOutput),
+            cellRenderer: NameCell,
+            cellRendererParams: { rowMeta, onToggleCollapse },
+          };
+        } else if (c.id === 'predecessors') {
+          def = {
+            headerName: c.label,
+            width: c.width,
+            editable: c.editable,
+            resizable: true,
+            sortable: false,
+            colId: 'predecessors',
+            valueGetter: (p) =>
+              p.data ? formatPredecessors(p.data.predecessors, idToSdr) : '',
+            valueParser: (p) =>
+              parsePredecessors(String(p.newValue ?? ''), sdrToId, p.data?.row_id),
+          };
+        } else {
+          def = toColDef(c, cpmOutput);
+        }
+        return readOnly ? { ...def, editable: false } : def;
+      });
+
+      // User-defined custom columns (string-valued, stored in row.custom).
+      const customDefs: ColDef<ScheduleRow>[] = (customColumns ?? []).map((cc) => ({
+        headerName: cc.label,
+        width: 140,
+        editable: !readOnly,
+        resizable: true,
+        sortable: false,
+        colId: `custom:${cc.key}`,
+        valueGetter: (p) => p.data?.custom?.[cc.key] ?? '',
+      }));
+
+      return [...builtins, ...customDefs];
+    },
+    [cpmOutput, readOnly, idToSdr, sdrToId, rowMeta, onToggleCollapse, visibleSet, customColumns],
   );
 
   const defaultColDef = useMemo<ColDef<ScheduleRow>>(
@@ -296,15 +318,21 @@ export function ScheduleGrid({
   const onCellValueChanged = useCallback(
     (e: CellValueChangedEvent<ScheduleRow>) => {
       if (!e.data) return;
+      const colId = e.colDef.colId;
+      // Custom columns are stored in the row's `custom` bag.
+      if (colId?.startsWith('custom:')) {
+        onCustomCommit?.(e.data.row_id, colId.slice('custom:'.length), String(e.newValue ?? ''));
+        return;
+      }
       // The predecessors column is computed (colId, no field); map it explicitly.
       const field =
-        e.colDef.colId === 'predecessors'
+        colId === 'predecessors'
           ? ('predecessors' as keyof ScheduleRow)
           : (e.colDef.field as keyof ScheduleRow | undefined);
       if (!field) return;
       onCommit(e.data.row_id, field, e.newValue);
     },
-    [onCommit],
+    [onCommit, onCustomCommit],
   );
 
   // Highlight critical-path rows.

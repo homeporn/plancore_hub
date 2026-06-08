@@ -25,7 +25,14 @@ import { BatchHandoffDialog } from '@/components/handoff/BatchHandoffDialog';
 import { VolumeImportDialog } from '@/components/handoff/VolumeImportDialog';
 import { takeScheduleHandoff } from '@/lib/scheduleHandoff';
 import { useProject } from '@/context/ProjectProvider';
-import { loadCurrentScheduleRows } from '@plancore/data';
+import {
+  loadCurrentScheduleRows,
+  listCustomColumns,
+  createCustomColumn,
+  deleteCustomColumn,
+  type CustomColumn,
+  type CustomColumnType,
+} from '@plancore/data';
 import { getBrowserClient } from '@/lib/supabase/browser';
 
 export function ScheduleEditor() {
@@ -36,8 +43,45 @@ export function ScheduleEditor() {
   const [handoffOpen, setHandoffOpen] = useState(false);
   const [volumeImportOpen, setVolumeImportOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
+  const [customColumns, setCustomColumns] = useState<CustomColumn[]>([]);
   const { view, toggleColumn, setDensity, setTheme, reset } = useEditorView();
   const collab = useScheduleCollab(current?.id ?? null, (rows) => store.loadRows(rows));
+
+  // Load the project's custom column definitions.
+  const reloadCustomColumns = useCallback(() => {
+    if (!current) { setCustomColumns([]); return; }
+    listCustomColumns(getBrowserClient(), current.id)
+      .then(setCustomColumns)
+      .catch(() => { /* non-fatal */ });
+  }, [current]);
+
+  useEffect(() => { reloadCustomColumns(); }, [reloadCustomColumns]);
+
+  const addCustomColumn = useCallback(async (label: string, type: CustomColumnType) => {
+    if (!current) {
+      toast.warning('Выберите проект, чтобы добавить поле');
+      return;
+    }
+    const key = `c_${Math.random().toString(36).slice(2, 8)}`;
+    try {
+      await createCustomColumn(getBrowserClient(), current.id, {
+        key, label, type, sortOrder: customColumns.length,
+      });
+      toast.success('Поле добавлено', { description: label });
+      reloadCustomColumns();
+    } catch (e) {
+      toast.error('Не удалось добавить поле', { description: e instanceof Error ? e.message : undefined });
+    }
+  }, [current, customColumns.length, reloadCustomColumns]);
+
+  const removeCustomColumn = useCallback(async (id: string) => {
+    try {
+      await deleteCustomColumn(getBrowserClient(), id);
+      reloadCustomColumns();
+    } catch (e) {
+      toast.error('Не удалось удалить поле', { description: e instanceof Error ? e.message : undefined });
+    }
+  }, [reloadCustomColumns]);
   // A version that isn't editable (approved / in review) locks all edits.
   const readOnly = current ? !collab.editable : false;
 
@@ -184,6 +228,10 @@ export function ScheduleEditor() {
         onDensity={setDensity}
         onTheme={setTheme}
         onReset={reset}
+        customColumns={customColumns}
+        canAddCustom={!!current}
+        onAddCustom={addCustomColumn}
+        onRemoveCustom={removeCustomColumn}
       />
 
       {current && (
@@ -229,6 +277,8 @@ export function ScheduleEditor() {
           visibleColIds={view.visibleCols}
           density={view.density}
           gridTheme={view.theme}
+          customColumns={customColumns}
+          onCustomCommit={store.updateCustom}
         />
       </div>
 

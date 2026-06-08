@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+import { Trash2, Plus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -8,8 +10,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import type { CustomColumn, CustomColumnType } from '@plancore/data';
 import { COLUMNS } from './columnDefs';
 import type { Density, GridTheme, EditorView } from './useEditorView';
 
@@ -21,6 +25,10 @@ interface Props {
   onDensity: (d: Density) => void;
   onTheme: (t: GridTheme) => void;
   onReset: () => void;
+  customColumns: CustomColumn[];
+  canAddCustom: boolean;
+  onAddCustom: (label: string, type: CustomColumnType) => void;
+  onRemoveCustom: (id: string) => void;
 }
 
 const DENSITIES: { id: Density; label: string }[] = [
@@ -43,7 +51,22 @@ export function EditorViewDialog({
   onDensity,
   onTheme,
   onReset,
+  customColumns,
+  canAddCustom,
+  onAddCustom,
+  onRemoveCustom,
 }: Props) {
+  const [newLabel, setNewLabel] = useState('');
+  const [newType, setNewType] = useState<CustomColumnType>('text');
+
+  function submitCustom() {
+    const label = newLabel.trim();
+    if (!label) return;
+    onAddCustom(label, newType);
+    setNewLabel('');
+    setNewType('text');
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -104,8 +127,60 @@ export function EditorViewDialog({
             </div>
           </div>
 
+          <Separator />
+
+          {/* Custom fields */}
+          <div>
+            <p className="mb-2 text-sm font-medium">Произвольные поля</p>
+            {!canAddCustom && (
+              <p className="mb-2 text-xs text-muted-foreground">
+                Выберите проект, чтобы добавлять произвольные поля.
+              </p>
+            )}
+            {customColumns.length > 0 && (
+              <ul className="mb-2 space-y-1">
+                {customColumns.map((c) => (
+                  <li key={c.id} className="flex items-center gap-2 rounded-md border px-2 py-1 text-sm">
+                    <span className="flex-1">{c.label}</span>
+                    <span className="text-xs text-muted-foreground">{c.type}</span>
+                    <button
+                      onClick={() => onRemoveCustom(c.id)}
+                      aria-label="Удалить поле"
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {canAddCustom && (
+              <div className="flex items-center gap-2">
+                <Input
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') submitCustom(); }}
+                  placeholder="Название поля"
+                  className="flex-1"
+                />
+                <select
+                  value={newType}
+                  onChange={(e) => setNewType(e.target.value as CustomColumnType)}
+                  className="rounded-md border border-input bg-transparent px-2 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="text">текст</option>
+                  <option value="number">число</option>
+                  <option value="date">дата</option>
+                </select>
+                <Button size="sm" onClick={submitCustom} disabled={!newLabel.trim()}>
+                  <Plus className="h-4 w-4" /> Добавить
+                </Button>
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-between">
-            <Button variant="ghost" size="sm" onClick={onReset}>Сбросить</Button>
+            <Button variant="ghost" size="sm" onClick={onReset}>Сбросить вид</Button>
             <Button size="sm" onClick={() => onOpenChange(false)}>Готово</Button>
           </div>
         </div>

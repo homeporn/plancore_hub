@@ -98,6 +98,15 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
     );
   }, []);
 
+  /** Set a single user-defined custom column value on a row. */
+  const updateCustom = useCallback((rowId: string, key: string, value: string) => {
+    setRows(prev =>
+      prev.map(r =>
+        r.row_id === rowId ? { ...r, custom: { ...(r.custom ?? {}), [key]: value } } : r,
+      ),
+    );
+  }, []);
+
   /** Insert a new task/milestone after a row (or at the end), and select it. */
   const addRowAfter = useCallback((afterId: string | null, milestone = false) => {
     setRows(prev => {
@@ -299,6 +308,7 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
     renumber,
     toggleCollapse,
     updateCell,
+    updateCustom,
     addRowAfter,
     deleteRow,
     deleteRows,
