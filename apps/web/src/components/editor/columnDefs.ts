@@ -16,6 +16,7 @@ export const COLUMNS: ColumnDef[] = [
   { id: 'name',         label: 'Наименование', width: 280, editable: true, type: 'text' },
   { id: 'row_type',     label: 'Тип',        width: 120, editable: true,  type: 'select',
     options: ['заголовок','задание','задача/разработка','веха','согласование'] },
+  { id: 'predecessors', label: 'Предшеств.', width: 130, editable: true,  type: 'text' },
   { id: 'duration',     label: 'Длит., д',   width: 80,  editable: true,  type: 'number' },
   { id: 'startDate',    label: 'Начало',     width: 110, editable: true,  type: 'date' },
   { id: 'endDate',      label: 'Конец',      width: 110, editable: true,  type: 'date' },

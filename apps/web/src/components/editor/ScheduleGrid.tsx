@@ -17,7 +17,11 @@ import {
   type RowSelectionOptions,
 } from 'ag-grid-community';
 import type { ScheduleRow, CpmOutput, CpmResult, HandoffStatus } from '@plancore/core';
-import { HANDOFF_STATUS_LABELS } from '@plancore/core';
+import {
+  HANDOFF_STATUS_LABELS,
+  formatPredecessors,
+  parsePredecessors,
+} from '@plancore/core';
 import { COLUMNS, STATUS_LABELS, type ColumnDef } from './columnDefs';
 
 // Tailwind text colour per handoff exchange state (stuck = amber/red).
@@ -159,12 +163,40 @@ export function ScheduleGrid({
 }: ScheduleGridProps) {
   const apiRef = useRef<GridApi<ScheduleRow> | null>(null);
 
+  // SDR ⇄ row-id maps for rendering/parsing the predecessors column.
+  const { idToSdr, sdrToId } = useMemo(() => {
+    const idToSdr = new Map<string, string>();
+    const sdrToId = new Map<string, string>();
+    for (const r of rows) {
+      if (!r.sdr) continue;
+      idToSdr.set(r.row_id, r.sdr);
+      sdrToId.set(r.sdr, r.row_id);
+    }
+    return { idToSdr, sdrToId };
+  }, [rows]);
+
   const columnDefs = useMemo<ColDef<ScheduleRow>[]>(
     () => COLUMNS.map((c) => {
-      const def = toColDef(c, cpmOutput);
+      let def: ColDef<ScheduleRow>;
+      if (c.id === 'predecessors') {
+        def = {
+          headerName: c.label,
+          width: c.width,
+          editable: c.editable,
+          resizable: true,
+          sortable: false,
+          colId: 'predecessors',
+          valueGetter: (p) =>
+            p.data ? formatPredecessors(p.data.predecessors, idToSdr) : '',
+          valueParser: (p) =>
+            parsePredecessors(String(p.newValue ?? ''), sdrToId, p.data?.row_id),
+        };
+      } else {
+        def = toColDef(c, cpmOutput);
+      }
       return readOnly ? { ...def, editable: false } : def;
     }),
-    [cpmOutput, readOnly],
+    [cpmOutput, readOnly, idToSdr, sdrToId],
   );
 
   const defaultColDef = useMemo<ColDef<ScheduleRow>>(
@@ -200,8 +232,13 @@ export function ScheduleGrid({
 
   const onCellValueChanged = useCallback(
     (e: CellValueChangedEvent<ScheduleRow>) => {
-      const field = e.colDef.field as keyof ScheduleRow | undefined;
-      if (!field || !e.data) return;
+      if (!e.data) return;
+      // The predecessors column is computed (colId, no field); map it explicitly.
+      const field =
+        e.colDef.colId === 'predecessors'
+          ? ('predecessors' as keyof ScheduleRow)
+          : (e.colDef.field as keyof ScheduleRow | undefined);
+      if (!field) return;
       onCommit(e.data.row_id, field, e.newValue);
     },
     [onCommit],

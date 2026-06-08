@@ -77,6 +77,25 @@ export function ScheduleEditor() {
     store.updateCell(rowId, field, value as ScheduleRow[typeof field]);
   }, [store]);
 
+  // Ctrl/Cmd+C / +V copy & paste whole rows — but not while editing a cell.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (readOnly || !(e.ctrlKey || e.metaKey)) return;
+      const el = document.activeElement;
+      const editing = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement;
+      if (editing) return;
+      const key = e.key.toLowerCase();
+      if (key === 'c' && store.selectedRowIds.length > 0) {
+        store.copyRows(store.selectedRowIds);
+      } else if (key === 'v' && store.clipboardCount > 0) {
+        e.preventDefault();
+        store.pasteRows();
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [readOnly, store]);
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Toolbar */}
@@ -134,6 +153,7 @@ export function ScheduleEditor() {
       {/* Task toolbar: add / batch row operations */}
       <EditorTaskBar
         selectedCount={store.selectedRowIds.length}
+        clipboardCount={store.clipboardCount}
         disabled={readOnly}
         onAddTask={() => store.addRowAfter(store.selectedRowIds.at(-1) ?? store.rows.at(-1)?.row_id ?? null)}
         onAddMilestone={() => store.addRowAfter(store.selectedRowIds.at(-1) ?? store.rows.at(-1)?.row_id ?? null, true)}
@@ -141,6 +161,8 @@ export function ScheduleEditor() {
         onDelete={() => store.deleteRows(store.selectedRowIds)}
         onMoveUp={() => store.moveRowsUp(store.selectedRowIds)}
         onMoveDown={() => store.moveRowsDown(store.selectedRowIds)}
+        onCopy={() => store.copyRows(store.selectedRowIds)}
+        onPaste={() => store.pasteRows()}
       />
 
       {current && (

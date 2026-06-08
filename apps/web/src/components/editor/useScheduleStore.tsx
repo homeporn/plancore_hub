@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import {
   type ScheduleRow,
   runCpm,
@@ -62,6 +62,9 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
   const [editingCell, setEditingCell] = useState<CellId | null>(null);
   /** Row ids selected in the grid (for batch operations). */
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  /** Internal clipboard for copy/paste of whole rows. */
+  const clipboard = useRef<ScheduleRow[]>([]);
+  const [clipboardCount, setClipboardCount] = useState(0);
 
   const cpmOutput = useMemo<CpmOutput>(() => runCpm(rows, calendar), [rows, calendar]);
 
@@ -159,6 +162,32 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
     });
   }, []);
 
+  /** Copy selected rows into the internal clipboard (in grid order). */
+  const copyRows = useCallback((ids: string[]) => {
+    if (ids.length === 0) return;
+    const set = new Set(ids);
+    setRows(prev => {
+      clipboard.current = prev.filter(r => set.has(r.row_id)).map(r => ({ ...r }));
+      setClipboardCount(clipboard.current.length);
+      return prev;
+    });
+  }, []);
+
+  /** Paste clipboard rows (as fresh copies) after the selection, and select them. */
+  const pasteRows = useCallback(() => {
+    if (clipboard.current.length === 0) return;
+    const copies = clipboard.current.map(cloneRow);
+    setRows(prev => {
+      const lastSel = selectedRowIds.length > 0
+        ? Math.max(...prev.map((r, i) => (selectedRowIds.includes(r.row_id) ? i : -1)))
+        : prev.length - 1;
+      const next = [...prev];
+      next.splice(lastSel + 1, 0, ...copies);
+      return next;
+    });
+    setSelectedRowIds(copies.map(c => c.row_id));
+  }, [selectedRowIds]);
+
   const loadRows = useCallback((newRows: ScheduleRow[]) => {
     setRows(newRows);
     setSelectedRowIds([]);
@@ -179,6 +208,9 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
     setEditingCell,
     selectedRowIds,
     setSelectedRowIds,
+    clipboardCount,
+    copyRows,
+    pasteRows,
     updateCell,
     addRowAfter,
     deleteRow,

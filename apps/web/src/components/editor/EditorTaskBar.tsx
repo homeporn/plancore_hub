@@ -1,11 +1,12 @@
 'use client';
 
-import { Plus, Flag, Copy, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Flag, Copy, ClipboardPaste, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
 interface Props {
   selectedCount: number;
+  clipboardCount: number;
   disabled?: boolean;
   onAddTask: () => void;
   onAddMilestone: () => void;
@@ -13,6 +14,8 @@ interface Props {
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onCopy: () => void;
+  onPaste: () => void;
 }
 
 /**
@@ -22,6 +25,7 @@ interface Props {
  */
 export function EditorTaskBar({
   selectedCount,
+  clipboardCount,
   disabled = false,
   onAddTask,
   onAddMilestone,
@@ -29,6 +33,8 @@ export function EditorTaskBar({
   onDelete,
   onMoveUp,
   onMoveDown,
+  onCopy,
+  onPaste,
 }: Props) {
   const noSelection = selectedCount === 0;
   const blocked = disabled;
@@ -44,6 +50,12 @@ export function EditorTaskBar({
 
       <Separator orientation="vertical" className="mx-1 h-5" />
 
+      <Button variant="ghost" size="sm" disabled={blocked || noSelection} onClick={onCopy}>
+        <Copy className="h-4 w-4" /> Копировать
+      </Button>
+      <Button variant="ghost" size="sm" disabled={blocked || clipboardCount === 0} onClick={onPaste}>
+        <ClipboardPaste className="h-4 w-4" /> Вставить
+      </Button>
       <Button variant="ghost" size="sm" disabled={blocked || noSelection} onClick={onDuplicate}>
         <Copy className="h-4 w-4" /> Дублировать
       </Button>
