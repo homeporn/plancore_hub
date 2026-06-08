@@ -1,6 +1,9 @@
 'use client';
 
-import { Plus, Flag, Copy, ClipboardPaste, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import {
+  Plus, Flag, Copy, ClipboardPaste, Trash2, ArrowUp, ArrowDown,
+  IndentIncrease, IndentDecrease, ListOrdered,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
@@ -16,6 +19,9 @@ interface Props {
   onMoveDown: () => void;
   onCopy: () => void;
   onPaste: () => void;
+  onIndent: () => void;
+  onOutdent: () => void;
+  onRenumber: () => void;
 }
 
 /**
@@ -35,6 +41,9 @@ export function EditorTaskBar({
   onMoveDown,
   onCopy,
   onPaste,
+  onIndent,
+  onOutdent,
+  onRenumber,
 }: Props) {
   const noSelection = selectedCount === 0;
   const blocked = disabled;
@@ -76,6 +85,18 @@ export function EditorTaskBar({
       </Button>
       <Button variant="ghost" size="sm" disabled={blocked || noSelection} onClick={onMoveDown}>
         <ArrowDown className="h-4 w-4" /> Вниз
+      </Button>
+
+      <Separator orientation="vertical" className="mx-1 h-5" />
+
+      <Button variant="ghost" size="sm" disabled={blocked || noSelection} onClick={onOutdent}>
+        <IndentDecrease className="h-4 w-4" /> ←
+      </Button>
+      <Button variant="ghost" size="sm" disabled={blocked || noSelection} onClick={onIndent}>
+        <IndentIncrease className="h-4 w-4" /> →
+      </Button>
+      <Button variant="ghost" size="sm" disabled={blocked} onClick={onRenumber}>
+        <ListOrdered className="h-4 w-4" /> Нумерация
       </Button>
 
       {selectedCount > 0 && (

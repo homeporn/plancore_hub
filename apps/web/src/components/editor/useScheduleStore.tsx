@@ -7,7 +7,18 @@ import {
   type CpmOutput,
   type WorkCalendar,
   DEFAULT_CALENDAR,
+  sdrDepth,
+  clampLevels,
+  outlineNumbers,
+  hasChildrenFlags,
+  hiddenByCollapse,
 } from '@plancore/core';
+
+export interface RowMeta {
+  level: number;
+  hasChildren: boolean;
+  collapsed: boolean;
+}
 
 function uuid(): string {
   return crypto.randomUUID();
@@ -65,6 +76,15 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
   /** Internal clipboard for copy/paste of whole rows. */
   const clipboard = useRef<ScheduleRow[]>([]);
   const [clipboardCount, setClipboardCount] = useState(0);
+  /** WBS depth per row id (falls back to the SDR code's depth). */
+  const [levels, setLevels] = useState<Record<string, number>>({});
+  /** Collapsed group row ids (their descendants are hidden). */
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set());
+
+  const levelOf = useCallback(
+    (r: ScheduleRow) => levels[r.row_id] ?? sdrDepth(r.sdr),
+    [levels],
+  );
 
   const cpmOutput = useMemo<CpmOutput>(() => runCpm(rows, calendar), [rows, calendar]);
 
@@ -188,9 +208,70 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
     setSelectedRowIds(copies.map(c => c.row_id));
   }, [selectedRowIds]);
 
+  /** Re-indent the selected rows by `delta` levels and renumber the outline. */
+  const shiftLevels = useCallback((ids: string[], delta: number) => {
+    if (ids.length === 0) return;
+    const sel = new Set(ids);
+    const arr = rows.map((r) => levelOf(r));
+    rows.forEach((r, i) => { if (sel.has(r.row_id)) arr[i] = arr[i] + delta; });
+    const clamped = clampLevels(arr);
+    const codes = outlineNumbers(clamped);
+    setRows((prev) => prev.map((r, i) => (r.sdr === codes[i] ? r : { ...r, sdr: codes[i] })));
+    const nl: Record<string, number> = {};
+    rows.forEach((r, i) => { nl[r.row_id] = clamped[i]; });
+    setLevels(nl);
+  }, [rows, levelOf]);
+
+  const indentRows = useCallback((ids: string[]) => shiftLevels(ids, +1), [shiftLevels]);
+  const outdentRows = useCallback((ids: string[]) => shiftLevels(ids, -1), [shiftLevels]);
+
+  /** Recompute SDR codes from the current order and levels (auto-numbering). */
+  const renumber = useCallback(() => {
+    const clamped = clampLevels(rows.map((r) => levelOf(r)));
+    const codes = outlineNumbers(clamped);
+    setRows((prev) => prev.map((r, i) => (r.sdr === codes[i] ? r : { ...r, sdr: codes[i] })));
+    const nl: Record<string, number> = {};
+    rows.forEach((r, i) => { nl[r.row_id] = clamped[i]; });
+    setLevels(nl);
+  }, [rows, levelOf]);
+
+  const toggleCollapse = useCallback((id: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  /** Per-row outline metadata for rendering (indent, chevron, collapsed). */
+  const rowMeta = useMemo(() => {
+    const arr = rows.map((r) => levelOf(r));
+    const kids = hasChildrenFlags(arr);
+    const m = new Map<string, RowMeta>();
+    rows.forEach((r, i) =>
+      m.set(r.row_id, { level: arr[i], hasChildren: kids[i], collapsed: collapsedIds.has(r.row_id) }),
+    );
+    return m;
+  }, [rows, levelOf, collapsedIds]);
+
+  /** Rows visible after applying collapsed groups. */
+  const visibleRows = useMemo(() => {
+    if (collapsedIds.size === 0) return rows;
+    const arr = rows.map((r) => levelOf(r));
+    const collapsedIdx = new Set<number>();
+    rows.forEach((r, i) => { if (collapsedIds.has(r.row_id)) collapsedIdx.add(i); });
+    const hidden = hiddenByCollapse(arr, collapsedIdx);
+    return rows.filter((_, i) => !hidden.has(i));
+  }, [rows, levelOf, collapsedIds]);
+
   const loadRows = useCallback((newRows: ScheduleRow[]) => {
     setRows(newRows);
     setSelectedRowIds([]);
+    setCollapsedIds(new Set());
+    const nl: Record<string, number> = {};
+    newRows.forEach((r) => { nl[r.row_id] = sdrDepth(r.sdr); });
+    setLevels(nl);
   }, []);
 
   const appendRows = useCallback((extra: ScheduleRow[]) => {
@@ -211,6 +292,12 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
     clipboardCount,
     copyRows,
     pasteRows,
+    rowMeta,
+    visibleRows,
+    indentRows,
+    outdentRows,
+    renumber,
+    toggleCollapse,
     updateCell,
     addRowAfter,
     deleteRow,

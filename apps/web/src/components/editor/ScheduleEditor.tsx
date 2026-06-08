@@ -163,6 +163,9 @@ export function ScheduleEditor() {
         onMoveDown={() => store.moveRowsDown(store.selectedRowIds)}
         onCopy={() => store.copyRows(store.selectedRowIds)}
         onPaste={() => store.pasteRows()}
+        onIndent={() => store.indentRows(store.selectedRowIds)}
+        onOutdent={() => store.outdentRows(store.selectedRowIds)}
+        onRenumber={() => store.renumber()}
       />
 
       {current && (
@@ -197,12 +200,14 @@ export function ScheduleEditor() {
       {/* Grid */}
       <div className="min-h-0 flex-1">
         <ScheduleGrid
-          rows={store.rows}
+          rows={store.visibleRows}
           cpmOutput={store.cpmOutput}
           onCommit={handleCommit}
           readOnly={readOnly}
           selectedRowIds={store.selectedRowIds}
           onSelectionChange={store.setSelectedRowIds}
+          rowMeta={store.rowMeta}
+          onToggleCollapse={store.toggleCollapse}
         />
       </div>
 

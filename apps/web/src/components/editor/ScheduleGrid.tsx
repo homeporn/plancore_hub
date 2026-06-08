@@ -16,6 +16,8 @@ import {
   type SelectionChangedEvent,
   type RowSelectionOptions,
 } from 'ag-grid-community';
+import { ChevronRight, ChevronDown } from 'lucide-react';
+import type { ICellRendererParams } from 'ag-grid-community';
 import type { ScheduleRow, CpmOutput, CpmResult, HandoffStatus } from '@plancore/core';
 import {
   HANDOFF_STATUS_LABELS,
@@ -23,6 +25,7 @@ import {
   parsePredecessors,
 } from '@plancore/core';
 import { COLUMNS, STATUS_LABELS, type ColumnDef } from './columnDefs';
+import type { RowMeta } from './useScheduleStore';
 
 // Tailwind text colour per handoff exchange state (stuck = amber/red).
 const HANDOFF_CELL_CLASS: Record<HandoffStatus, string> = {
@@ -58,6 +61,38 @@ interface ScheduleGridProps {
   selectedRowIds?: string[];
   /** Fires when the grid's row selection changes. */
   onSelectionChange?: (ids: string[]) => void;
+  /** Outline metadata per row id (indent / chevron / collapsed). */
+  rowMeta?: Map<string, RowMeta>;
+  /** Toggle collapse for a group row. */
+  onToggleCollapse?: (id: string) => void;
+}
+
+/** Name cell: WBS indentation + collapse chevron for group rows. */
+function NameCell(
+  params: ICellRendererParams<ScheduleRow> & {
+    rowMeta?: Map<string, RowMeta>;
+    onToggleCollapse?: (id: string) => void;
+  },
+) {
+  const id = params.data?.row_id;
+  const meta = id ? params.rowMeta?.get(id) : undefined;
+  const level = meta?.level ?? 0;
+  return (
+    <span className="flex items-center" style={{ paddingLeft: level * 16 }}>
+      {meta?.hasChildren ? (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); if (id) params.onToggleCollapse?.(id); }}
+          className="mr-1 inline-flex h-4 w-4 items-center justify-center text-muted-foreground hover:text-foreground"
+        >
+          {meta.collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        </button>
+      ) : (
+        <span className="mr-1 inline-block w-4" />
+      )}
+      <span className={meta?.hasChildren ? 'font-medium' : undefined}>{params.value}</span>
+    </span>
+  );
 }
 
 function toDateString(value: Date | null): string {
@@ -160,6 +195,8 @@ export function ScheduleGrid({
   readOnly = false,
   selectedRowIds,
   onSelectionChange,
+  rowMeta,
+  onToggleCollapse,
 }: ScheduleGridProps) {
   const apiRef = useRef<GridApi<ScheduleRow> | null>(null);
 
@@ -178,7 +215,13 @@ export function ScheduleGrid({
   const columnDefs = useMemo<ColDef<ScheduleRow>[]>(
     () => COLUMNS.map((c) => {
       let def: ColDef<ScheduleRow>;
-      if (c.id === 'predecessors') {
+      if (c.id === 'name') {
+        def = {
+          ...toColDef(c, cpmOutput),
+          cellRenderer: NameCell,
+          cellRendererParams: { rowMeta, onToggleCollapse },
+        };
+      } else if (c.id === 'predecessors') {
         def = {
           headerName: c.label,
           width: c.width,
@@ -196,7 +239,7 @@ export function ScheduleGrid({
       }
       return readOnly ? { ...def, editable: false } : def;
     }),
-    [cpmOutput, readOnly, idToSdr, sdrToId],
+    [cpmOutput, readOnly, idToSdr, sdrToId, rowMeta, onToggleCollapse],
   );
 
   const defaultColDef = useMemo<ColDef<ScheduleRow>>(
