@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Upload, Plus, Boxes, Send, CheckSquare } from 'lucide-react';
+import { Upload, Boxes, Send, CheckSquare } from 'lucide-react';
 import { parseExcelFile, importToSchedule, type ScheduleRow } from '@plancore/core';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,6 +16,7 @@ import { useScheduleStore } from './useScheduleStore';
 import { useScheduleCollab } from './useScheduleCollab';
 import { ScheduleGrid } from './ScheduleGrid';
 import { ScheduleSaveBar } from './ScheduleSaveBar';
+import { EditorTaskBar } from './EditorTaskBar';
 import { CpmSummary } from './CpmSummary';
 import { ApprovalPanel } from '@/components/approval/ApprovalPanel';
 import { BatchHandoffDialog } from '@/components/handoff/BatchHandoffDialog';
@@ -33,6 +34,8 @@ export function ScheduleEditor() {
   const [handoffOpen, setHandoffOpen] = useState(false);
   const [volumeImportOpen, setVolumeImportOpen] = useState(false);
   const collab = useScheduleCollab(current?.id ?? null, (rows) => store.loadRows(rows));
+  // A version that isn't editable (approved / in review) locks all edits.
+  const readOnly = current ? !collab.editable : false;
 
   // On mount, prefer wizard/template handoff; otherwise load the current
   // project's saved schedule (if a project is selected in the Hub).
@@ -112,14 +115,6 @@ export function ScheduleEditor() {
             onChange={handleFile}
           />
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => store.addRowAfter(store.rows[store.rows.length - 1]?.row_id ?? null)}
-          >
-            <Plus className="h-4 w-4" /> Строка
-          </Button>
-
           {current && (
             <>
               <Button variant="outline" size="sm" onClick={() => setVolumeImportOpen(true)}>
@@ -135,6 +130,18 @@ export function ScheduleEditor() {
           )}
         </div>
       </header>
+
+      {/* Task toolbar: add / batch row operations */}
+      <EditorTaskBar
+        selectedCount={store.selectedRowIds.length}
+        disabled={readOnly}
+        onAddTask={() => store.addRowAfter(store.selectedRowIds.at(-1) ?? store.rows.at(-1)?.row_id ?? null)}
+        onAddMilestone={() => store.addRowAfter(store.selectedRowIds.at(-1) ?? store.rows.at(-1)?.row_id ?? null, true)}
+        onDuplicate={() => store.duplicateRows(store.selectedRowIds)}
+        onDelete={() => store.deleteRows(store.selectedRowIds)}
+        onMoveUp={() => store.moveRowsUp(store.selectedRowIds)}
+        onMoveDown={() => store.moveRowsDown(store.selectedRowIds)}
+      />
 
       {current && (
         <Dialog open={approvalOpen} onOpenChange={setApprovalOpen}>
@@ -171,7 +178,9 @@ export function ScheduleEditor() {
           rows={store.rows}
           cpmOutput={store.cpmOutput}
           onCommit={handleCommit}
-          readOnly={current ? !collab.editable : false}
+          readOnly={readOnly}
+          selectedRowIds={store.selectedRowIds}
+          onSelectionChange={store.setSelectedRowIds}
         />
       </div>
 

@@ -2,6 +2,7 @@
 
 import { useMemo, useCallback } from 'react';
 import { AgGridReact } from 'ag-grid-react';
+import { useEffect, useRef } from 'react';
 import {
   ModuleRegistry,
   AllCommunityModule,
@@ -10,6 +11,10 @@ import {
   type CellValueChangedEvent,
   type ValueGetterParams,
   type RowClassParams,
+  type GridApi,
+  type GridReadyEvent,
+  type SelectionChangedEvent,
+  type RowSelectionOptions,
 } from 'ag-grid-community';
 import type { ScheduleRow, CpmOutput, CpmResult, HandoffStatus } from '@plancore/core';
 import { HANDOFF_STATUS_LABELS } from '@plancore/core';
@@ -45,6 +50,10 @@ interface ScheduleGridProps {
   onCommit: (rowId: string, field: keyof ScheduleRow, value: unknown) => void;
   /** When true, disable all cell editing (e.g. an approved version). */
   readOnly?: boolean;
+  /** Selected row ids (controlled by the store). */
+  selectedRowIds?: string[];
+  /** Fires when the grid's row selection changes. */
+  onSelectionChange?: (ids: string[]) => void;
 }
 
 function toDateString(value: Date | null): string {
@@ -133,7 +142,23 @@ function toColDef(
   return { ...base, field };
 }
 
-export function ScheduleGrid({ rows, cpmOutput, onCommit, readOnly = false }: ScheduleGridProps) {
+const rowSelection: RowSelectionOptions = {
+  mode: 'multiRow',
+  checkboxes: true,
+  headerCheckbox: true,
+  enableClickSelection: false,
+};
+
+export function ScheduleGrid({
+  rows,
+  cpmOutput,
+  onCommit,
+  readOnly = false,
+  selectedRowIds,
+  onSelectionChange,
+}: ScheduleGridProps) {
+  const apiRef = useRef<GridApi<ScheduleRow> | null>(null);
+
   const columnDefs = useMemo<ColDef<ScheduleRow>[]>(
     () => COLUMNS.map((c) => {
       const def = toColDef(c, cpmOutput);
@@ -145,6 +170,32 @@ export function ScheduleGrid({ rows, cpmOutput, onCommit, readOnly = false }: Sc
   const defaultColDef = useMemo<ColDef<ScheduleRow>>(
     () => ({ suppressMovable: true, singleClickEdit: false }),
     [],
+  );
+
+  const onGridReady = useCallback((e: GridReadyEvent<ScheduleRow>) => {
+    apiRef.current = e.api;
+  }, []);
+
+  // Reflect the store's selection into the grid (e.g. after add/duplicate)
+  // without echoing it straight back as a user change.
+  useEffect(() => {
+    const api = apiRef.current;
+    if (!api || !selectedRowIds) return;
+    const want = new Set(selectedRowIds);
+    const current = new Set(api.getSelectedRows().map((r) => r.row_id));
+    if (want.size === current.size && [...want].every((id) => current.has(id))) return;
+    api.deselectAll();
+    selectedRowIds.forEach((id) => {
+      const node = api.getRowNode(id);
+      node?.setSelected(true);
+    });
+  }, [selectedRowIds, rows]);
+
+  const onSelectionChanged = useCallback(
+    (e: SelectionChangedEvent<ScheduleRow>) => {
+      onSelectionChange?.(e.api.getSelectedRows().map((r) => r.row_id));
+    },
+    [onSelectionChange],
   );
 
   const onCellValueChanged = useCallback(
@@ -173,6 +224,9 @@ export function ScheduleGrid({ rows, cpmOutput, onCommit, readOnly = false }: Sc
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}
         getRowId={(p) => p.data.row_id}
+        rowSelection={rowSelection}
+        onGridReady={onGridReady}
+        onSelectionChanged={onSelectionChanged}
         onCellValueChanged={onCellValueChanged}
         getRowClass={getRowClass}
         stopEditingWhenCellsLoseFocus
