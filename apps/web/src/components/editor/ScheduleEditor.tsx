@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Upload, Boxes, Send, CheckSquare } from 'lucide-react';
+import { Upload, Boxes, Send, CheckSquare, SlidersHorizontal } from 'lucide-react';
 import { parseExcelFile, importToSchedule, type ScheduleRow } from '@plancore/core';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,6 +17,8 @@ import { useScheduleCollab } from './useScheduleCollab';
 import { ScheduleGrid } from './ScheduleGrid';
 import { ScheduleSaveBar } from './ScheduleSaveBar';
 import { EditorTaskBar } from './EditorTaskBar';
+import { EditorViewDialog } from './EditorViewDialog';
+import { useEditorView } from './useEditorView';
 import { CpmSummary } from './CpmSummary';
 import { ApprovalPanel } from '@/components/approval/ApprovalPanel';
 import { BatchHandoffDialog } from '@/components/handoff/BatchHandoffDialog';
@@ -33,6 +35,8 @@ export function ScheduleEditor() {
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [handoffOpen, setHandoffOpen] = useState(false);
   const [volumeImportOpen, setVolumeImportOpen] = useState(false);
+  const [viewOpen, setViewOpen] = useState(false);
+  const { view, toggleColumn, setDensity, setTheme, reset } = useEditorView();
   const collab = useScheduleCollab(current?.id ?? null, (rows) => store.loadRows(rows));
   // A version that isn't editable (approved / in review) locks all edits.
   const readOnly = current ? !collab.editable : false;
@@ -123,6 +127,10 @@ export function ScheduleEditor() {
             </>
           )}
 
+          <Button variant="outline" size="sm" onClick={() => setViewOpen(true)}>
+            <SlidersHorizontal className="h-4 w-4" /> Вид
+          </Button>
+
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-4 w-4" /> Импорт Excel
           </Button>
@@ -168,6 +176,16 @@ export function ScheduleEditor() {
         onRenumber={() => store.renumber()}
       />
 
+      <EditorViewDialog
+        open={viewOpen}
+        onOpenChange={setViewOpen}
+        view={view}
+        onToggleColumn={toggleColumn}
+        onDensity={setDensity}
+        onTheme={setTheme}
+        onReset={reset}
+      />
+
       {current && (
         <Dialog open={approvalOpen} onOpenChange={setApprovalOpen}>
           <DialogContent className="max-w-3xl">
@@ -208,6 +226,9 @@ export function ScheduleEditor() {
           onSelectionChange={store.setSelectedRowIds}
           rowMeta={store.rowMeta}
           onToggleCollapse={store.toggleCollapse}
+          visibleColIds={view.visibleCols}
+          density={view.density}
+          gridTheme={view.theme}
         />
       </div>
 

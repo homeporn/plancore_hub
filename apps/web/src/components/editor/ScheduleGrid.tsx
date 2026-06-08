@@ -7,6 +7,7 @@ import {
   ModuleRegistry,
   AllCommunityModule,
   themeQuartz,
+  colorSchemeDark,
   type ColDef,
   type CellValueChangedEvent,
   type ValueGetterParams,
@@ -26,6 +27,7 @@ import {
 } from '@plancore/core';
 import { COLUMNS, STATUS_LABELS, type ColumnDef } from './columnDefs';
 import type { RowMeta } from './useScheduleStore';
+import type { Density } from './useEditorView';
 
 // Tailwind text colour per handoff exchange state (stuck = amber/red).
 const HANDOFF_CELL_CLASS: Record<HandoffStatus, string> = {
@@ -39,16 +41,19 @@ const HANDOFF_CELL_CLASS: Record<HandoffStatus, string> = {
 // AG Grid v33: register the Community feature modules once.
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-// Match the app's light design tokens.
-const theme = themeQuartz.withParams({
-  accentColor: '#0a0a0a',
-  borderColor: '#e5e7eb',
-  headerBackgroundColor: '#f9fafb',
-  fontSize: 13,
-  headerFontSize: 12,
-  rowHeight: 32,
-  headerHeight: 34,
-});
+const ROW_HEIGHTS: Record<Density, number> = { compact: 26, normal: 32, comfortable: 42 };
+
+/** Build the AG Grid theme from the view preferences (density + light/dark). */
+function buildTheme(density: Density, dark: boolean) {
+  const base = dark ? themeQuartz.withPart(colorSchemeDark) : themeQuartz;
+  return base.withParams({
+    accentColor: '#4f46e5',
+    fontSize: 13,
+    headerFontSize: 12,
+    rowHeight: ROW_HEIGHTS[density],
+    headerHeight: ROW_HEIGHTS[density] + 2,
+  });
+}
 
 interface ScheduleGridProps {
   rows: ScheduleRow[];
@@ -65,6 +70,12 @@ interface ScheduleGridProps {
   rowMeta?: Map<string, RowMeta>;
   /** Toggle collapse for a group row. */
   onToggleCollapse?: (id: string) => void;
+  /** Visible column ids (column manager). Defaults to all columns. */
+  visibleColIds?: string[];
+  /** Row density. */
+  density?: Density;
+  /** Grid colour scheme. */
+  gridTheme?: 'light' | 'dark';
 }
 
 /** Name cell: WBS indentation + collapse chevron for group rows. */
@@ -197,8 +208,17 @@ export function ScheduleGrid({
   onSelectionChange,
   rowMeta,
   onToggleCollapse,
+  visibleColIds,
+  density = 'normal',
+  gridTheme = 'light',
 }: ScheduleGridProps) {
   const apiRef = useRef<GridApi<ScheduleRow> | null>(null);
+
+  const theme = useMemo(() => buildTheme(density, gridTheme === 'dark'), [density, gridTheme]);
+  const visibleSet = useMemo(
+    () => (visibleColIds ? new Set(visibleColIds) : null),
+    [visibleColIds],
+  );
 
   // SDR ⇄ row-id maps for rendering/parsing the predecessors column.
   const { idToSdr, sdrToId } = useMemo(() => {
@@ -213,7 +233,7 @@ export function ScheduleGrid({
   }, [rows]);
 
   const columnDefs = useMemo<ColDef<ScheduleRow>[]>(
-    () => COLUMNS.map((c) => {
+    () => COLUMNS.filter((c) => !visibleSet || c.locked || visibleSet.has(c.id as string)).map((c) => {
       let def: ColDef<ScheduleRow>;
       if (c.id === 'name') {
         def = {
@@ -239,7 +259,7 @@ export function ScheduleGrid({
       }
       return readOnly ? { ...def, editable: false } : def;
     }),
-    [cpmOutput, readOnly, idToSdr, sdrToId, rowMeta, onToggleCollapse],
+    [cpmOutput, readOnly, idToSdr, sdrToId, rowMeta, onToggleCollapse, visibleSet],
   );
 
   const defaultColDef = useMemo<ColDef<ScheduleRow>>(
