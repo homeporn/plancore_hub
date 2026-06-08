@@ -149,6 +149,17 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
     );
   }, []);
 
+  /** Write computed (CPM-derived) start/finish dates into the rows so they
+   *  persist on save. Overwrites existing planned dates. */
+  const applyDates = useCallback((dates: Map<string, { start: Date; end: Date }>) => {
+    mutate(prev =>
+      prev.map(r => {
+        const d = dates.get(r.row_id);
+        return d ? { ...r, startDate: d.start, endDate: d.end } : r;
+      }),
+    );
+  }, []);
+
   /** Insert a new task/milestone after a row (or at the end), and select it. */
   const addRowAfter = useCallback((afterId: string | null, milestone = false) => {
     mutate(prev => {
@@ -358,6 +369,7 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
     canRedo,
     updateCell,
     updateCustom,
+    applyDates,
     addRowAfter,
     deleteRow,
     deleteRows,

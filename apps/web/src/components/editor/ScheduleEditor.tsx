@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Upload, Boxes, Send, CheckSquare, SlidersHorizontal, AlertTriangle } from 'lucide-react';
+import { Upload, Boxes, Send, CheckSquare, SlidersHorizontal, AlertTriangle, CalendarCheck } from 'lucide-react';
 import {
   parseExcelFile,
   importToSchedule,
@@ -235,6 +235,19 @@ export function ScheduleEditor() {
 
           <Button variant="outline" size="sm" onClick={() => setViewOpen(true)}>
             <SlidersHorizontal className="h-4 w-4" /> Вид
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={readOnly}
+            onClick={() => {
+              store.applyDates(cpmDates);
+              toast.success('Даты зафиксированы', { description: 'Расчётные даты МКП записаны в график' });
+            }}
+            title="Записать расчётные даты МКП в поля Начало/Конец"
+          >
+            <CalendarCheck className="h-4 w-4" /> Даты
           </Button>
 
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
