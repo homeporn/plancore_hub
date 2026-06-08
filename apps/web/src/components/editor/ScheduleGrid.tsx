@@ -83,6 +83,8 @@ interface ScheduleGridProps {
   onCustomCommit?: (rowId: string, key: string, value: string) => void;
   /** Worst audit severity per row id, for inline highlighting. */
   rowIssues?: Map<string, 'critical' | 'warning' | 'info'>;
+  /** CPM-derived planned dates per row id (fallback when no explicit date). */
+  cpmDates?: Map<string, { start: Date; end: Date }>;
 }
 
 /** Name cell: WBS indentation + collapse chevron for group rows. */
@@ -113,8 +115,30 @@ function NameCell(
   );
 }
 
-function toDateString(value: Date | null): string {
-  return value ? value.toISOString().slice(0, 10) : '';
+/** Format a date as dd.mm.yy (Russian short form). */
+function formatRuDate(value: Date | null): string {
+  if (!value) return '';
+  const d = String(value.getDate()).padStart(2, '0');
+  const m = String(value.getMonth() + 1).padStart(2, '0');
+  const y = String(value.getFullYear()).slice(-2);
+  return `${d}.${m}.${y}`;
+}
+
+/** Parse dd.mm.yy or dd.mm.yyyy (also tolerates ISO yyyy-mm-dd) into a Date. */
+function parseRuDate(text: string): Date | null {
+  const s = text.trim();
+  if (!s) return null;
+  const ru = s.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})$/);
+  if (ru) {
+    const day = Number(ru[1]);
+    const month = Number(ru[2]) - 1;
+    let year = Number(ru[3]);
+    if (year < 100) year += 2000;
+    const d = new Date(year, month, day);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const iso = new Date(s);
+  return isNaN(iso.getTime()) ? null : iso;
 }
 
 /** Build an AG Grid column from our shared ColumnDef. */
@@ -169,8 +193,8 @@ function toColDef(
     return {
       ...base,
       field,
-      valueGetter: (p) => toDateString((p.data?.[field] as Date | null) ?? null),
-      valueParser: (p) => (p.newValue ? new Date(p.newValue) : null),
+      valueGetter: (p) => formatRuDate((p.data?.[field] as Date | null) ?? null),
+      valueParser: (p) => parseRuDate(String(p.newValue ?? '')),
     };
   }
 
@@ -221,6 +245,7 @@ export function ScheduleGrid({
   customColumns,
   onCustomCommit,
   rowIssues,
+  cpmDates,
 }: ScheduleGridProps) {
   const apiRef = useRef<GridApi<ScheduleRow> | null>(null);
 
@@ -265,6 +290,19 @@ export function ScheduleGrid({
             valueParser: (p) =>
               parsePredecessors(String(p.newValue ?? ''), sdrToId, p.data?.row_id),
           };
+        } else if (c.id === 'startDate' || c.id === 'endDate') {
+          const isStart = c.id === 'startDate';
+          const dateField = (isStart ? 'startDate' : 'endDate') as keyof ScheduleRow;
+          def = {
+            ...toColDef(c, cpmOutput),
+            // Show the explicit date, or fall back to the CPM-derived one.
+            valueGetter: (p) => {
+              const explicit = (p.data?.[dateField] as Date | null) ?? null;
+              if (explicit) return formatRuDate(explicit);
+              const d = p.data ? cpmDates?.get(p.data.row_id) : undefined;
+              return formatRuDate(d ? (isStart ? d.start : d.end) : null);
+            },
+          };
         } else {
           def = toColDef(c, cpmOutput);
         }
@@ -284,7 +322,7 @@ export function ScheduleGrid({
 
       return [...builtins, ...customDefs];
     },
-    [cpmOutput, readOnly, idToSdr, sdrToId, rowMeta, onToggleCollapse, visibleSet, customColumns],
+    [cpmOutput, readOnly, idToSdr, sdrToId, rowMeta, onToggleCollapse, visibleSet, customColumns, cpmDates],
   );
 
   const defaultColDef = useMemo<ColDef<ScheduleRow>>(

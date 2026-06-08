@@ -8,6 +8,8 @@ import {
   importToSchedule,
   runAudit,
   scheduleToAuditTasks,
+  offsetToDate,
+  DEFAULT_CALENDAR,
   type SeverityLevel,
   type ScheduleRow,
 } from '@plancore/core';
@@ -109,6 +111,27 @@ export function ScheduleEditor() {
     }
     return m;
   }, [audit, store.rows]);
+
+  // Planned dates derived from CPM, anchored to the earliest explicit start
+  // (or today), so «Начало/Конец» show real dates instead of blanks.
+  const cpmDates = useMemo(() => {
+    const explicit = store.rows
+      .map((r) => r.startDate)
+      .filter((d): d is Date => d instanceof Date);
+    const anchor = explicit.length
+      ? new Date(Math.min(...explicit.map((d) => d.getTime())))
+      : new Date();
+    const m = new Map<string, { start: Date; end: Date }>();
+    for (const r of store.rows) {
+      const res = store.cpmOutput.results.get(r.row_id);
+      if (!res) continue;
+      m.set(r.row_id, {
+        start: offsetToDate(anchor, res.early_start, DEFAULT_CALENDAR),
+        end: offsetToDate(anchor, Math.max(res.early_start, res.early_finish - 1), DEFAULT_CALENDAR),
+      });
+    }
+    return m;
+  }, [store.rows, store.cpmOutput]);
 
   // On mount, prefer wizard/template handoff; otherwise load the current
   // project's saved schedule (if a project is selected in the Hub).
@@ -323,6 +346,7 @@ export function ScheduleEditor() {
           customColumns={customColumns}
           onCustomCommit={store.updateCustom}
           rowIssues={rowIssues}
+          cpmDates={cpmDates}
         />
       </div>
 
