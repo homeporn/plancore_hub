@@ -124,23 +124,6 @@ function formatRuDate(value: Date | null): string {
   return `${d}.${m}.${y}`;
 }
 
-/** Parse dd.mm.yy or dd.mm.yyyy (also tolerates ISO yyyy-mm-dd) into a Date. */
-function parseRuDate(text: string): Date | null {
-  const s = text.trim();
-  if (!s) return null;
-  const ru = s.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})$/);
-  if (ru) {
-    const day = Number(ru[1]);
-    const month = Number(ru[2]) - 1;
-    let year = Number(ru[3]);
-    if (year < 100) year += 2000;
-    const d = new Date(year, month, day);
-    return isNaN(d.getTime()) ? null : d;
-  }
-  const iso = new Date(s);
-  return isNaN(iso.getTime()) ? null : iso;
-}
-
 /** Build an AG Grid column from our shared ColumnDef. */
 function toColDef(
   col: ColumnDef,
@@ -193,8 +176,10 @@ function toColDef(
     return {
       ...base,
       field,
-      valueGetter: (p) => formatRuDate((p.data?.[field] as Date | null) ?? null),
-      valueParser: (p) => parseRuDate(String(p.newValue ?? '')),
+      // Native date editor: type a value or pick from the calendar.
+      cellEditor: 'agDateCellEditor',
+      cellEditorParams: { min: '2000-01-01', max: '2100-12-31' },
+      valueFormatter: (p) => formatRuDate((p.value as Date | null) ?? null),
     };
   }
 
@@ -292,12 +277,12 @@ export function ScheduleGrid({
           };
         } else if (c.id === 'startDate' || c.id === 'endDate') {
           const isStart = c.id === 'startDate';
-          const dateField = (isStart ? 'startDate' : 'endDate') as keyof ScheduleRow;
           def = {
             ...toColDef(c, cpmOutput),
-            // Show the explicit date, or fall back to the CPM-derived one.
-            valueGetter: (p) => {
-              const explicit = (p.data?.[dateField] as Date | null) ?? null;
+            // Value is the explicit Date (editable via the date picker); when
+            // empty, display the CPM-derived date as a fallback.
+            valueFormatter: (p) => {
+              const explicit = (p.value as Date | null) ?? null;
               if (explicit) return formatRuDate(explicit);
               const d = p.data ? cpmDates?.get(p.data.row_id) : undefined;
               return formatRuDate(d ? (isStart ? d.start : d.end) : null);
