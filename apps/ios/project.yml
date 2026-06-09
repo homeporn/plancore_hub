@@ -1,0 +1,54 @@
+name: PlanCoreMobile
+options:
+  bundleIdPrefix: ai.plancore
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+configs:
+  Debug: debug
+  Release: release
+
+packages:
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    from: 2.0.0
+
+settings:
+  base:
+    # Pull SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY from Secrets.xcconfig.
+    # Copy PlanCoreMobile/Secrets.xcconfig.example → Secrets.xcconfig first.
+  configs:
+    Debug:
+      baseConfigurationFile: PlanCoreMobile/Secrets.xcconfig
+    Release:
+      baseConfigurationFile: PlanCoreMobile/Secrets.xcconfig
+
+targets:
+  PlanCoreMobile:
+    type: application
+    platform: iOS
+    sources:
+      - path: PlanCoreMobile
+    info:
+      path: PlanCoreMobile/Info.plist
+      properties:
+        CFBundleDisplayName: PlanCore
+        UILaunchScreen: {}
+        SUPABASE_URL: $(SUPABASE_URL)
+        SUPABASE_PUBLISHABLE_KEY: $(SUPABASE_PUBLISHABLE_KEY)
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.plancore.mobile
+        GENERATE_INFOPLIST_FILE: NO
+    dependencies:
+      - package: Supabase
+        product: Supabase
+
+  PlanCoreMobileTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: PlanCoreMobileTests
+    dependencies:
+      - target: PlanCoreMobile

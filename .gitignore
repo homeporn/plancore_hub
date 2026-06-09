@@ -34,3 +34,20 @@ next-env.d.ts
 supabase/.branches/
 supabase/.temp/
 supabase/.env
+
+# iOS native app (apps/ios)
+apps/ios/**/build/
+apps/ios/DerivedData/
+apps/ios/**/*.xcuserstate
+apps/ios/**/xcuserdata/
+apps/ios/*.xcodeproj
+apps/ios/**/Secrets.xcconfig
+apps/ios/.swiftpm/
+
+# Android native app (apps/android)
+apps/android/**/build/
+apps/android/.gradle/
+apps/android/local.properties
+apps/android/.idea/
+apps/android/captures/
+apps/android/app/release/

@@ -1,0 +1,6 @@
+# Copy to local.properties (git-ignored). Set your Android SDK path and the
+# Supabase backend config. The publishable key is a client-side key (safe to
+# ship); RLS enforces per-user access on the backend.
+sdk.dir=/Users/you/Library/Android/sdk
+SUPABASE_URL=https://arvesrgqdpsbkxbhiquc.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_GrJD8_3mOTAO3LNPmFfL7Q_DzhaBBhh
