@@ -7,6 +7,8 @@ import {
   buildScheduleFromTemplate,
   runCpm,
   DEFAULT_CALENDAR,
+  listBuiltinScenarios,
+  getBuiltinScenario,
   type ScaffoldInput,
   type ScheduleRow,
 } from '@plancore/core';
@@ -53,6 +55,8 @@ export function ScheduleWizard({ onCreate }: ScheduleWizardProps) {
       .finally(() => setLoadingTypes(false));
   }, []);
 
+  const scenarios = useMemo(() => listBuiltinScenarios(), []);
+
   const chooseObjectType = useCallback(async (type: string) => {
     setObjectType(type);
     setLoadingInput(true);
@@ -64,6 +68,15 @@ export function ScheduleWizard({ onCreate }: ScheduleWizardProps) {
     } finally {
       setLoadingInput(false);
     }
+  }, []);
+
+  // Built-in scenario: no DB round-trip, the payload ships with the app.
+  const chooseScenario = useCallback((id: string) => {
+    const scenario = getBuiltinScenario(id);
+    if (!scenario) return;
+    setObjectType(scenario.objectType);
+    setInput(scenario.input);
+    setStep('params');
   }, []);
 
   const preview = useMemo<ScheduleRow[]>(() => {
@@ -93,31 +106,57 @@ export function ScheduleWizard({ onCreate }: ScheduleWizardProps) {
       <Stepper current={step} />
 
       {step === 'object' && (
-        <section className="space-y-3">
-          {loadingTypes ? (
-            <div className="space-y-2">
-              {[0, 1, 2].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
-            </div>
-          ) : objectTypes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Нет доступных шаблонов СДР.</p>
-          ) : (
+        <section className="space-y-5">
+          {/* Built-in scenarios — always available. */}
+          <div className="space-y-2">
+            <h2 className="text-sm font-medium">Готовые сценарии</h2>
             <div className="grid gap-2 sm:grid-cols-2">
-              {objectTypes.map((t) => (
+              {scenarios.map((s) => (
                 <button
-                  key={t}
-                  onClick={() => void chooseObjectType(t)}
+                  key={s.id}
+                  onClick={() => chooseScenario(s.id)}
                   disabled={loadingInput}
-                  className="group flex items-center justify-between gap-3 rounded-lg border bg-card p-4 text-left text-sm shadow-sm transition-colors hover:border-primary disabled:opacity-60"
+                  className="group flex items-start justify-between gap-3 rounded-lg border bg-card p-4 text-left text-sm shadow-sm transition-colors hover:border-primary disabled:opacity-60"
                 >
-                  <span className="flex items-center gap-3">
-                    <FileStack className="h-5 w-5 text-muted-foreground" />
-                    <span className="font-medium">{t}</span>
+                  <span className="flex items-start gap-3">
+                    <FileStack className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                    <span>
+                      <span className="block font-medium">{s.label}</span>
+                      <span className="block text-xs text-muted-foreground">{s.description}</span>
+                    </span>
                   </span>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                  <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                 </button>
               ))}
             </div>
-          )}
+          </div>
+
+          {/* Templates from the project database, if any. */}
+          {loadingTypes ? (
+            <div className="space-y-2">
+              {[0, 1].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
+            </div>
+          ) : objectTypes.length > 0 ? (
+            <div className="space-y-2">
+              <h2 className="text-sm font-medium">Шаблоны из базы</h2>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {objectTypes.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => void chooseObjectType(t)}
+                    disabled={loadingInput}
+                    className="group flex items-center justify-between gap-3 rounded-lg border bg-card p-4 text-left text-sm shadow-sm transition-colors hover:border-primary disabled:opacity-60"
+                  >
+                    <span className="flex items-center gap-3">
+                      <FileStack className="h-5 w-5 text-muted-foreground" />
+                      <span className="font-medium">{t}</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </section>
       )}
 
