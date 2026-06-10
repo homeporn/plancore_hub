@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   parseExcelFile,
@@ -11,7 +11,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { setScheduleHandoff } from '@/lib/scheduleHandoff';
+import { setScheduleHandoff, getWorkingCopy, setWorkingCopy } from '@/lib/scheduleHandoff';
+import { useProject } from '@/context/ProjectProvider';
+import { loadCurrentScheduleRows } from '@plancore/data';
+import { getBrowserClient } from '@/lib/supabase/browser';
 import { useGraphEditor } from './useGraphEditor';
 import { EditableGraphCanvas } from './EditableGraphCanvas';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
@@ -25,7 +28,29 @@ const LINK_TYPES: LinkType[] = ['FS', 'SS', 'FF', 'SF'];
 export function GraphView() {
   const ed = useGraphEditor();
   const router = useRouter();
+  const { current } = useProject();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // On mount, pick up the cross-mode working copy (e.g. unsaved edits from the
+  // editor); otherwise load the project's saved schedule.
+  useEffect(() => {
+    const working = getWorkingCopy(current?.id ?? null);
+    if (working && working.length > 0) {
+      ed.loadRows(working);
+      return;
+    }
+    if (current) {
+      loadCurrentScheduleRows(getBrowserClient(), current.id)
+        .then((rows) => { if (rows.length > 0) ed.loadRows(rows); })
+        .catch(() => { /* fall back to a blank canvas */ });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the working copy in sync so switching back to the editor keeps edits.
+  useEffect(() => {
+    if (ed.rows.length > 0) setWorkingCopy(current?.id ?? null, ed.rows);
+  }, [ed.rows, current]);
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

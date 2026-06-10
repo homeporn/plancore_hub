@@ -34,7 +34,7 @@ import { CpmSummary } from './CpmSummary';
 import { ApprovalPanel } from '@/components/approval/ApprovalPanel';
 import { BatchHandoffDialog } from '@/components/handoff/BatchHandoffDialog';
 import { VolumeImportDialog } from '@/components/handoff/VolumeImportDialog';
-import { takeScheduleHandoff } from '@/lib/scheduleHandoff';
+import { takeScheduleHandoff, getWorkingCopy, setWorkingCopy } from '@/lib/scheduleHandoff';
 import { useProject } from '@/context/ProjectProvider';
 import {
   loadCurrentScheduleRows,
@@ -142,6 +142,12 @@ export function ScheduleEditor() {
       store.loadRows(handoff);
       return;
     }
+    // Unsaved working copy (e.g. after switching to the graph and back).
+    const working = getWorkingCopy(current?.id ?? null);
+    if (working && working.length > 0) {
+      store.loadRows(working);
+      return;
+    }
     if (current) {
       loadCurrentScheduleRows(getBrowserClient(), current.id)
         .then((rows) => { if (rows.length > 0) store.loadRows(rows); })
@@ -149,6 +155,11 @@ export function ScheduleEditor() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Keep the cross-mode working copy in sync so editor ⇄ graph never loses edits.
+  useEffect(() => {
+    setWorkingCopy(current?.id ?? null, store.rows);
+  }, [store.rows, current]);
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
