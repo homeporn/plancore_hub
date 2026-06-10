@@ -74,3 +74,33 @@
     -webkit-font-smoothing: antialiased;
   }
 }
+
+/*
+ * Schedule grid (AG Grid) row colouring by WBS nesting level + states.
+ * Defaults; overridable at runtime via CSS variables (see useEditorView).
+ * Precedence: selected row (gray) > audit issue > nesting level > leaf.
+ */
+:root {
+  --plc-lvl0-bg: #1e3a8a; --plc-lvl0-fg: #ffffff;
+  --plc-lvl1-bg: #2563eb; --plc-lvl1-fg: #ffffff;
+  --plc-lvl2-bg: #60a5fa; --plc-lvl2-fg: #ffffff;
+  --plc-lvl3-bg: #bfdbfe; --plc-lvl3-fg: #0f172a;
+  --plc-leaf-bg: #ffffff; --plc-leaf-fg: #0f172a;
+  --plc-selected-bg: #e5e7eb; --plc-selected-fg: #0f172a;
+}
+
+.ag-row.plc-lvl-0 { background: var(--plc-lvl0-bg); color: var(--plc-lvl0-fg); font-weight: 600; }
+.ag-row.plc-lvl-1 { background: var(--plc-lvl1-bg); color: var(--plc-lvl1-fg); font-weight: 500; }
+.ag-row.plc-lvl-2 { background: var(--plc-lvl2-bg); color: var(--plc-lvl2-fg); }
+.ag-row.plc-lvl-3 { background: var(--plc-lvl3-bg); color: var(--plc-lvl3-fg); }
+.ag-row.plc-leaf  { background: var(--plc-leaf-bg); color: var(--plc-leaf-fg); }
+.ag-row.plc-warning { background: #fffbeb; color: #92400e; }
+.ag-row.plc-critical { background: #fef2f2; color: #991b1b; }
+
+/* Active / selected row — always gray, wins over level colours. */
+.ag-row.ag-row-selected,
+.ag-row.ag-row-selected .ag-cell {
+  background: var(--plc-selected-bg) !important;
+  color: var(--plc-selected-fg) !important;
+}
+

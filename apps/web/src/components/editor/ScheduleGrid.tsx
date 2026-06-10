@@ -361,16 +361,19 @@ export function ScheduleGrid({
     [onCommit, onCustomCommit],
   );
 
-  // Highlight critical-path rows.
+  // Colour rows by WBS nesting level; audit issues take precedence. Styles
+  // live in globals.css (.plc-*); selected row is always gray (CSS).
   const getRowClass = useCallback(
     (p: RowClassParams<ScheduleRow>) => {
       if (!p.data) return undefined;
       const issue = rowIssues?.get(p.data.row_id);
-      if (issue === 'critical') return 'bg-red-50';
-      if (issue === 'warning') return 'bg-amber-50';
-      return cpmOutput.results.get(p.data.row_id)?.is_critical ? 'bg-red-50' : undefined;
+      if (issue === 'critical') return 'plc-critical';
+      if (issue === 'warning') return 'plc-warning';
+      const meta = rowMeta?.get(p.data.row_id);
+      if (meta?.hasChildren) return `plc-lvl-${Math.min(meta.level, 3)}`;
+      return 'plc-leaf';
     },
-    [cpmOutput, rowIssues],
+    [rowMeta, rowIssues],
   );
 
   return (
