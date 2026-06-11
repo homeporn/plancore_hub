@@ -167,10 +167,113 @@ const fullCycleScenario: BuiltinScenario = {
   },
 };
 
+// ─────────────────────────────────────────────────────────────────────────
+// Scenario 4 — Инженерные изыскания
+// ─────────────────────────────────────────────────────────────────────────
+const SURVEY = 'Изыскания';
+const surveyScenario: BuiltinScenario = {
+  id: 'survey',
+  label: 'Инженерные изыскания',
+  description: 'Геодезия → геология → экология → технический отчёт',
+  objectType: SURVEY,
+  input: {
+    templates: [
+      n(SURVEY, '1', '', 'Инженерные изыскания', 'ROOT', 1),
+      n(SURVEY, '1.1', '1', 'Инженерно-геодезические', 'ГЕОДЕЗИЯ', 1, true),
+      n(SURVEY, '1.2', '1', 'Инженерно-геологические', 'ГЕОЛОГИЯ', 2, true),
+      n(SURVEY, '1.3', '1', 'Инженерно-экологические', 'ЭКОЛОГИЯ', 3, true),
+      n(SURVEY, '1.4', '1', 'Технический отчёт', 'ОТЧЁТ', 4, true),
+    ],
+    durationModels: [
+      dur(SURVEY, 'ГЕОДЕЗИЯ', 10),
+      dur(SURVEY, 'ГЕОЛОГИЯ', 15),
+      dur(SURVEY, 'ЭКОЛОГИЯ', 10),
+      dur(SURVEY, 'ОТЧЁТ', 10),
+    ],
+    dependencies: [
+      dep(SURVEY, 'ГЕОДЕЗИЯ', 'ГЕОЛОГИЯ', 'SS', 3),
+      dep(SURVEY, 'ГЕОЛОГИЯ', 'ЭКОЛОГИЯ', 'SS', 3),
+      dep(SURVEY, 'ГЕОЛОГИЯ', 'ОТЧЁТ'),
+      dep(SURVEY, 'ЭКОЛОГИЯ', 'ОТЧЁТ'),
+    ],
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────
+// Scenario 5 — Реконструкция / капитальный ремонт
+// ─────────────────────────────────────────────────────────────────────────
+const RECON = 'Реконструкция';
+const reconstructionScenario: BuiltinScenario = {
+  id: 'reconstruction',
+  label: 'Реконструкция / капремонт',
+  description: 'Обследование → демонтаж → усиление → монтаж → отделка',
+  objectType: RECON,
+  input: {
+    templates: [
+      n(RECON, '1', '', 'Реконструкция', 'ROOT', 1),
+      n(RECON, '1.1', '1', 'Обследование конструкций', 'ОБСЛЕД', 1, true),
+      n(RECON, '1.2', '1', 'Демонтажные работы', 'ДЕМОНТАЖ', 2, true),
+      n(RECON, '1.3', '1', 'Усиление конструкций', 'УСИЛЕНИЕ', 3, true),
+      n(RECON, '1.4', '1', 'Монтажные работы', 'МОНТАЖ', 4, true),
+      n(RECON, '1.5', '1', 'Отделка и сдача', 'ОТДЕЛКА', 5, true),
+    ],
+    durationModels: [
+      dur(RECON, 'ОБСЛЕД', 10),
+      dur(RECON, 'ДЕМОНТАЖ', 15),
+      dur(RECON, 'УСИЛЕНИЕ', 20),
+      dur(RECON, 'МОНТАЖ', 25),
+      dur(RECON, 'ОТДЕЛКА', 15),
+    ],
+    dependencies: [
+      dep(RECON, 'ОБСЛЕД', 'ДЕМОНТАЖ'),
+      dep(RECON, 'ДЕМОНТАЖ', 'УСИЛЕНИЕ'),
+      dep(RECON, 'УСИЛЕНИЕ', 'МОНТАЖ'),
+      dep(RECON, 'МОНТАЖ', 'ОТДЕЛКА'),
+    ],
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────
+// Scenario 6 — Линейный объект (сети / дороги)
+// ─────────────────────────────────────────────────────────────────────────
+const LINEAR = 'Линейный объект';
+const linearScenario: BuiltinScenario = {
+  id: 'linear',
+  label: 'Линейный объект (сети/дороги)',
+  description: 'Трасса → земляные работы → прокладка → испытания → восстановление',
+  objectType: LINEAR,
+  input: {
+    templates: [
+      n(LINEAR, '1', '', 'Линейный объект', 'ROOT', 1),
+      n(LINEAR, '1.1', '1', 'Вынос трассы в натуру', 'ТРАССА', 1, true),
+      n(LINEAR, '1.2', '1', 'Земляные работы (траншея)', 'ЗЕМ', 2, true),
+      n(LINEAR, '1.3', '1', 'Прокладка / устройство покрытия', 'ПРОКЛАДКА', 3, true),
+      n(LINEAR, '1.4', '1', 'Испытания и приёмка', 'ИСПЫТ', 4, true),
+      n(LINEAR, '1.5', '1', 'Восстановление благоустройства', 'ВОССТ', 5, true),
+    ],
+    durationModels: [
+      dur(LINEAR, 'ТРАССА', 5),
+      dur(LINEAR, 'ЗЕМ', 20),
+      dur(LINEAR, 'ПРОКЛАДКА', 30),
+      dur(LINEAR, 'ИСПЫТ', 10),
+      dur(LINEAR, 'ВОССТ', 15),
+    ],
+    dependencies: [
+      dep(LINEAR, 'ТРАССА', 'ЗЕМ'),
+      dep(LINEAR, 'ЗЕМ', 'ПРОКЛАДКА', 'SS', 5),
+      dep(LINEAR, 'ПРОКЛАДКА', 'ИСПЫТ'),
+      dep(LINEAR, 'ИСПЫТ', 'ВОССТ'),
+    ],
+  },
+};
+
 export const BUILTIN_SCENARIOS: BuiltinScenario[] = [
   designScenario,
   constructionScenario,
   fullCycleScenario,
+  surveyScenario,
+  reconstructionScenario,
+  linearScenario,
 ];
 
 /** Lightweight list for pickers (no template payload). */

@@ -54,7 +54,9 @@ export function useScheduleCollab(
   const revisionRef = useRef(0);
   revisionRef.current = revision;
 
-  const editable = version ? isVersionEditable(version.approvalStatus) : false;
+  // No version yet → you're building the first one, so editing is allowed.
+  // A version locks edits only when it's approved / in review.
+  const editable = version ? isVersionEditable(version.approvalStatus) : true;
 
   // Load version + revision, subscribe to revision changes and presence.
   useEffect(() => {

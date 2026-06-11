@@ -15,7 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import type { CustomColumn, CustomColumnType } from '@plancore/data';
 import { COLUMNS } from './columnDefs';
-import type { Density, GridTheme, EditorView } from './useEditorView';
+import { COLOR_FIELDS, type Density, type GridTheme, type EditorView } from './useEditorView';
 
 interface Props {
   open: boolean;
@@ -29,6 +29,8 @@ interface Props {
   canAddCustom: boolean;
   onAddCustom: (label: string, type: CustomColumnType) => void;
   onRemoveCustom: (id: string) => void;
+  onColor: (key: string, value: string) => void;
+  onResetColors: () => void;
 }
 
 const DENSITIES: { id: Density; label: string }[] = [
@@ -55,6 +57,8 @@ export function EditorViewDialog({
   canAddCustom,
   onAddCustom,
   onRemoveCustom,
+  onColor,
+  onResetColors,
 }: Props) {
   const [newLabel, setNewLabel] = useState('');
   const [newType, setNewType] = useState<CustomColumnType>('text');
@@ -75,7 +79,7 @@ export function EditorViewDialog({
           <DialogDescription>Поля, плотность и тема таблицы. Сохраняется в браузере.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
           {/* Density */}
           <div>
             <p className="mb-1.5 text-sm font-medium">Плотность строк</p>
@@ -94,6 +98,31 @@ export function EditorViewDialog({
               value={view.theme}
               onChange={(v) => onTheme(v as GridTheme)}
             />
+          </div>
+
+          <Separator />
+
+          {/* Row colours by level */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-sm font-medium">Цвета строк по уровням</p>
+              <button onClick={onResetColors} className="text-xs text-muted-foreground hover:text-foreground hover:underline">
+                Сбросить цвета
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+              {COLOR_FIELDS.map((f) => (
+                <label key={f.key} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="truncate text-muted-foreground">{f.label}</span>
+                  <input
+                    type="color"
+                    value={view.colors[f.key] ?? '#ffffff'}
+                    onChange={(e) => onColor(f.key, e.target.value)}
+                    className="h-6 w-9 shrink-0 cursor-pointer rounded border bg-transparent"
+                  />
+                </label>
+              ))}
+            </div>
           </div>
 
           <Separator />

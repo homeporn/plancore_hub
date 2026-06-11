@@ -55,7 +55,7 @@ export function ScheduleEditor() {
   const [volumeImportOpen, setVolumeImportOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
   const [customColumns, setCustomColumns] = useState<CustomColumn[]>([]);
-  const { view, toggleColumn, setDensity, setTheme, reset } = useEditorView();
+  const { view, colorVars, toggleColumn, setDensity, setTheme, setColor, resetColors, reset } = useEditorView();
   const collab = useScheduleCollab(current?.id ?? null, (rows) => store.loadRows(rows));
 
   // Load the project's custom column definitions.
@@ -344,6 +344,8 @@ export function ScheduleEditor() {
         canAddCustom={!!current}
         onAddCustom={addCustomColumn}
         onRemoveCustom={removeCustomColumn}
+        onColor={setColor}
+        onResetColors={resetColors}
       />
 
       {current && (
@@ -376,7 +378,7 @@ export function ScheduleEditor() {
       )}
 
       {/* Grid */}
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1" style={colorVars}>
         <ScheduleGrid
           rows={store.visibleRows}
           cpmOutput={store.cpmOutput}
