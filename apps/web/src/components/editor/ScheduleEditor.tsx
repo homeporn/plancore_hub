@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Upload, Boxes, Send, CheckSquare, SlidersHorizontal, AlertTriangle, CalendarCheck, RefreshCw } from 'lucide-react';
+import { Upload, Boxes, Send, CheckSquare, SlidersHorizontal, AlertTriangle, CalendarCheck, RefreshCw, GanttChartSquare } from 'lucide-react';
 import {
   parseExcelFile,
   importToSchedule,
@@ -11,6 +11,7 @@ import {
   scheduleToAuditTasks,
   offsetToDate,
   recalcProgressByTime,
+  mkLink,
   DEFAULT_CALENDAR,
   type ProgressInput,
   type SeverityLevel,
@@ -31,6 +32,8 @@ import { ScheduleGrid } from './ScheduleGrid';
 import { ScheduleSaveBar } from './ScheduleSaveBar';
 import { EditorTaskBar } from './EditorTaskBar';
 import { EditorViewDialog } from './EditorViewDialog';
+import { GanttChart } from './GanttChart';
+import { TaskDetailPanel } from './TaskDetailPanel';
 import { useEditorView } from './useEditorView';
 import { CpmSummary } from './CpmSummary';
 import { ApprovalPanel } from '@/components/approval/ApprovalPanel';
@@ -59,6 +62,7 @@ export function ScheduleEditor() {
   const [customColumns, setCustomColumns] = useState<CustomColumn[]>([]);
   // Target date for the progress recalculation (defaults to today).
   const [recalcDate, setRecalcDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [ganttOpen, setGanttOpen] = useState(false);
   const { view, colorVars, toggleColumn, setDensity, setTheme, setColor, resetColors, reset } = useEditorView();
   const collab = useScheduleCollab(current?.id ?? null, (rows) => store.loadRows(rows));
 
@@ -161,6 +165,28 @@ export function ScheduleEditor() {
       description: `На дату ${recalcDate.split('-').reverse().join('.')} · задач: ${results.length}`,
     });
   }, [recalcDate, store, cpmDates]);
+
+  // Critical-path rows for Gantt colouring.
+  const criticalIds = useMemo(
+    () => new Set(store.cpmOutput.criticalPath),
+    [store.cpmOutput],
+  );
+
+  // Create an FS dependency by dragging a link in the Gantt.
+  const handleGanttLink = useCallback((predId: string, succId: string) => {
+    const succ = store.rows.find((r) => r.row_id === succId);
+    if (!succ || predId === succId) return;
+    if (succ.predecessors.some((p) => p.rowId === predId)) return;
+    store.updateCell(succId, 'predecessors', [...succ.predecessors, mkLink(predId)]);
+  }, [store]);
+
+  // The single selected row drives the bottom detail panel.
+  const detailRow = useMemo(
+    () => (store.selectedRowIds.length === 1
+      ? store.rows.find((r) => r.row_id === store.selectedRowIds[0]) ?? null
+      : null),
+    [store.selectedRowIds, store.rows],
+  );
 
   // On mount, prefer wizard/template handoff; otherwise load the current
   // project's saved schedule (if a project is selected in the Hub).
@@ -293,6 +319,10 @@ export function ScheduleEditor() {
               <Separator orientation="vertical" className="h-6" />
             </>
           )}
+
+          <Button variant={ganttOpen ? 'default' : 'outline'} size="sm" onClick={() => setGanttOpen((v) => !v)}>
+            <GanttChartSquare className="h-4 w-4" /> Гантт
+          </Button>
 
           <Button variant="outline" size="sm" onClick={() => setViewOpen(true)}>
             <SlidersHorizontal className="h-4 w-4" /> Вид
@@ -440,11 +470,45 @@ export function ScheduleEditor() {
         />
       </div>
 
+      {/* Gantt frame (editable) */}
+      {ganttOpen && (
+        <div className="h-72 shrink-0 border-t bg-background">
+          <GanttChart
+            rows={store.visibleRows}
+            dates={cpmDates}
+            criticalIds={criticalIds}
+            selectedId={store.selectedRowIds.length === 1 ? store.selectedRowIds[0] : null}
+            readOnly={readOnly}
+            onSelect={(id) => store.setSelectedRowIds([id])}
+            onResize={(id, days) => store.updateCell(id, 'duration', days)}
+            onLink={handleGanttLink}
+          />
+        </div>
+      )}
+
+      {/* Bottom task detail panel */}
+      {detailRow && (
+        <div className="h-64 shrink-0">
+          <TaskDetailPanel
+            row={detailRow}
+            rows={store.rows}
+            customColumns={customColumns}
+            readOnly={readOnly}
+            effective={cpmDates.get(detailRow.row_id)
+              ? { start: cpmDates.get(detailRow.row_id)!.start, end: cpmDates.get(detailRow.row_id)!.end }
+              : undefined}
+            onField={(field, value) => store.updateCell(detailRow.row_id, field, value)}
+            onCustom={(key, value) => store.updateCustom(detailRow.row_id, key, value)}
+            onClose={() => store.setSelectedRowIds([])}
+          />
+        </div>
+      )}
+
       {/* Status bar */}
       <footer className="flex shrink-0 items-center gap-4 border-t bg-muted px-4 py-1 text-xs text-muted-foreground">
         <span>{store.rows.length} строк</span>
         <span className="ml-auto">
-          Двойной клик / Enter — редактировать · Tab — следующая ячейка · стрелки — навигация
+          Двойной клик / Enter — редактировать · клик по задаче — детали снизу
         </span>
       </footer>
     </div>
