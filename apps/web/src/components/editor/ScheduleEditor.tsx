@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Upload, Boxes, Send, CheckSquare, SlidersHorizontal, AlertTriangle, CalendarCheck } from 'lucide-react';
+import { Upload, Boxes, Send, CheckSquare, SlidersHorizontal, AlertTriangle, CalendarCheck, RefreshCw } from 'lucide-react';
 import {
   parseExcelFile,
   importToSchedule,
@@ -10,7 +10,9 @@ import {
   runAudit,
   scheduleToAuditTasks,
   offsetToDate,
+  recalcProgressByTime,
   DEFAULT_CALENDAR,
+  type ProgressInput,
   type SeverityLevel,
   type ScheduleRow,
 } from '@plancore/core';
@@ -55,6 +57,8 @@ export function ScheduleEditor() {
   const [volumeImportOpen, setVolumeImportOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
   const [customColumns, setCustomColumns] = useState<CustomColumn[]>([]);
+  // Target date for the progress recalculation (defaults to today).
+  const [recalcDate, setRecalcDate] = useState(() => new Date().toISOString().slice(0, 10));
   const { view, colorVars, toggleColumn, setDensity, setTheme, setColor, resetColors, reset } = useEditorView();
   const collab = useScheduleCollab(current?.id ?? null, (rows) => store.loadRows(rows));
 
@@ -133,6 +137,30 @@ export function ScheduleEditor() {
     }
     return m;
   }, [store.rows, store.cpmOutput]);
+
+  // Recalculate progress by elapsed time as of the chosen date. Uses explicit
+  // dates where set, otherwise the CPM-derived ones. Paused tasks stay frozen.
+  const handleRecalc = useCallback(() => {
+    const asOf = new Date(recalcDate + 'T00:00:00');
+    if (Number.isNaN(asOf.getTime())) {
+      toast.error('Некорректная дата пересчёта');
+      return;
+    }
+    const inputs: ProgressInput[] = store.rows.map((r) => {
+      const d = cpmDates.get(r.row_id);
+      return {
+        rowId: r.row_id,
+        start: r.startDate ?? d?.start ?? null,
+        finish: r.endDate ?? d?.end ?? null,
+        status: r.taskStatus,
+      };
+    });
+    const results = recalcProgressByTime(inputs, asOf, DEFAULT_CALENDAR);
+    store.applyProgress(results);
+    toast.success('Прогресс пересчитан', {
+      description: `На дату ${recalcDate.split('-').reverse().join('.')} · задач: ${results.length}`,
+    });
+  }, [recalcDate, store, cpmDates]);
 
   // On mount, prefer wizard/template handoff; otherwise load the current
   // project's saved schedule (if a project is selected in the Hub).
@@ -282,6 +310,20 @@ export function ScheduleEditor() {
           >
             <CalendarCheck className="h-4 w-4" /> Даты
           </Button>
+
+          {/* Progress recalculation on a chosen date */}
+          <div className="flex items-center gap-1 rounded-md border bg-background px-1.5 py-0.5">
+            <input
+              type="date"
+              value={recalcDate}
+              onChange={(e) => setRecalcDate(e.target.value)}
+              className="bg-transparent text-xs outline-none"
+              title="Дата, на которую пересчитать прогресс"
+            />
+            <Button variant="ghost" size="sm" disabled={readOnly} onClick={handleRecalc} title="Пересчитать прогресс по времени на выбранную дату">
+              <RefreshCw className="h-4 w-4" /> Пересчитать
+            </Button>
+          </div>
 
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-4 w-4" /> Импорт Excel / MS Project

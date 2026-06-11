@@ -149,6 +149,23 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
     );
   }, []);
 
+  /** Apply recalculated progress (percent + status) to rows by id. */
+  const applyProgress = useCallback(
+    (results: { rowId: string; percentComplete: number; taskStatus: ScheduleRow['taskStatus'] }[]) => {
+      if (results.length === 0) return;
+      const byId = new Map(results.map((r) => [r.rowId, r]));
+      mutate((prev) =>
+        prev.map((r) => {
+          const res = byId.get(r.row_id);
+          return res
+            ? { ...r, percentComplete: res.percentComplete, taskStatus: res.taskStatus }
+            : r;
+        }),
+      );
+    },
+    [],
+  );
+
   /** Write computed (CPM-derived) start/finish dates into the rows so they
    *  persist on save. Overwrites existing planned dates. */
   const applyDates = useCallback((dates: Map<string, { start: Date; end: Date }>) => {
@@ -369,6 +386,7 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
     canRedo,
     updateCell,
     updateCustom,
+    applyProgress,
     applyDates,
     addRowAfter,
     deleteRow,

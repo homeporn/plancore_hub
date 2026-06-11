@@ -51,7 +51,14 @@ export const ROW_TYPE_LABELS: Record<RowType, string> = {
 };
 
 export type LinkType = 'FS' | 'SS' | 'FF' | 'SF';
-export type TaskStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+export type TaskStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'PAUSED' | 'COMPLETED';
+
+export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+  NOT_STARTED: 'Не начато',
+  IN_PROGRESS: 'В процессе',
+  PAUSED: 'Пауза',
+  COMPLETED: 'Завершено',
+};
 
 export const LINK_TYPE_LABELS: Record<LinkType, string> = {
   FS: 'Финиш → Старт',

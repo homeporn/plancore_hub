@@ -25,7 +25,7 @@ export const COLUMNS: ColumnDef[] = [
   { id: 'startDate',    label: 'Начало',     width: 110, editable: true,  type: 'date' },
   { id: 'endDate',      label: 'Конец',      width: 110, editable: true,  type: 'date' },
   { id: 'taskStatus',   label: 'Статус',     width: 120, editable: true,  type: 'select',
-    options: ['NOT_STARTED','IN_PROGRESS','COMPLETED'] },
+    options: ['NOT_STARTED','IN_PROGRESS','PAUSED','COMPLETED'] },
   { id: 'percentComplete', label: '%, завершение', width: 90, editable: true, type: 'number' },
   { id: 'responsible',  label: 'Ответственный', width: 140, editable: true, type: 'text' },
   { id: 'organization', label: 'Организация', width: 140, editable: true, type: 'text' },
@@ -59,6 +59,7 @@ export const DEFAULT_VISIBLE_COLS: string[] = COLUMNS.filter((c) => !c.defaultHi
 
 export const STATUS_LABELS: Record<string, string> = {
   NOT_STARTED: 'Не начато',
-  IN_PROGRESS: 'В работе',
+  IN_PROGRESS: 'В процессе',
+  PAUSED:      'Пауза',
   COMPLETED:   'Завершено',
 };
