@@ -4,8 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Upload, Boxes, Send, CheckSquare, SlidersHorizontal, AlertTriangle, CalendarCheck, RefreshCw, GanttChartSquare } from 'lucide-react';
 import {
-  parseExcelFile,
-  importToSchedule,
+  readSheetRaw,
   parseMsProjectXml,
   runAudit,
   scheduleToAuditTasks,
@@ -33,6 +32,7 @@ import { ScheduleSaveBar } from './ScheduleSaveBar';
 import { EditorTaskBar } from './EditorTaskBar';
 import { EditorViewDialog } from './EditorViewDialog';
 import { GanttChart } from './GanttChart';
+import { ColumnMappingDialog } from './ColumnMappingDialog';
 import { TaskDetailPanel } from './TaskDetailPanel';
 import { useEditorView } from './useEditorView';
 import { PLANNING_MODES, planningCaps } from './planningModes';
@@ -64,6 +64,8 @@ export function ScheduleEditor() {
   // Target date for the progress recalculation (defaults to today).
   const [recalcDate, setRecalcDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [ganttOpen, setGanttOpen] = useState(false);
+  // Excel column-mapping dialog state.
+  const [mapping, setMapping] = useState<{ headers: string[]; rows: Record<string, unknown>[] } | null>(null);
   // Resizable Gantt frame width and detail panel height (px).
   const [ganttWidth, setGanttWidth] = useState(480);
   const [detailHeight, setDetailHeight] = useState(256);
@@ -254,22 +256,21 @@ export function ScheduleEditor() {
       return;
     }
 
+    // Excel: open the column-mapping dialog (only «Название» is required).
     file.arrayBuffer().then(buf => {
       try {
-        const { tasks, missingColumns } = parseExcelFile(buf);
-        if (missingColumns.length > 0) {
-          toast.warning('Не хватает колонок', { description: missingColumns.join(', ') });
+        const { headers, rows } = readSheetRaw(buf);
+        if (headers.length === 0) {
+          toast.warning('Файл пуст или не содержит данных');
           return;
         }
-        const rows = importToSchedule(tasks);
-        store.loadRows(rows);
-        toast.success('Импорт завершён', { description: `Загружено строк: ${rows.length}` });
+        setMapping({ headers, rows });
       } catch {
         toast.error('Не удалось прочитать файл Excel');
       }
     }).catch(() => toast.error('Ошибка чтения файла'));
     e.target.value = '';
-  }, [store]);
+  }, []);
 
   const handleCommit = useCallback((rowId: string, field: keyof ScheduleRow, value: unknown) => {
     store.updateCell(rowId, field, value as ScheduleRow[typeof field]);
@@ -467,6 +468,14 @@ export function ScheduleEditor() {
         onIndent={() => store.indentRows(store.selectedRowIds)}
         onOutdent={() => store.outdentRows(store.selectedRowIds)}
         onRenumber={() => store.renumber()}
+      />
+
+      <ColumnMappingDialog
+        open={mapping !== null}
+        onOpenChange={(o) => { if (!o) setMapping(null); }}
+        headers={mapping?.headers ?? []}
+        rows={mapping?.rows ?? []}
+        onImport={(rows) => store.loadRows(rows)}
       />
 
       <EditorViewDialog
