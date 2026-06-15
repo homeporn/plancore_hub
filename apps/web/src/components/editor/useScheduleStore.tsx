@@ -141,6 +141,26 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
   }, []);
 
   /** Set a single user-defined custom column value on a row. */
+  /** Bulk-set one built-in field across many rows (Excel-like fill), one undo step. */
+  const fillCell = useCallback((
+    rowIds: string[],
+    field: keyof ScheduleRow,
+    value: unknown,
+  ) => {
+    if (rowIds.length === 0) return;
+    const set = new Set(rowIds);
+    mutate(prev => prev.map(r => set.has(r.row_id) ? { ...r, [field]: value } : r));
+  }, []);
+
+  /** Bulk-set one custom-column value across many rows, one undo step. */
+  const fillCustom = useCallback((rowIds: string[], key: string, value: string) => {
+    if (rowIds.length === 0) return;
+    const set = new Set(rowIds);
+    mutate(prev => prev.map(r =>
+      set.has(r.row_id) ? { ...r, custom: { ...(r.custom ?? {}), [key]: value } } : r,
+    ));
+  }, []);
+
   const updateCustom = useCallback((rowId: string, key: string, value: string) => {
     mutate(prev =>
       prev.map(r =>
@@ -386,6 +406,8 @@ export function useScheduleStore(initialRows: ScheduleRow[] = []) {
     canRedo,
     updateCell,
     updateCustom,
+    fillCell,
+    fillCustom,
     applyProgress,
     applyDates,
     addRowAfter,

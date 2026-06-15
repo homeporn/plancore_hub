@@ -10,6 +10,7 @@ import {
   colorSchemeDark,
   type ColDef,
   type CellValueChangedEvent,
+  type CellKeyDownEvent,
   type ValueGetterParams,
   type RowClassParams,
   type GridApi,
@@ -84,6 +85,10 @@ interface ScheduleGridProps {
   customColumns?: CustomColumn[];
   /** Commit a custom column value edit. */
   onCustomCommit?: (rowId: string, key: string, value: string) => void;
+  /** Bulk-fill a built-in field across rows (Excel-like fill-down). */
+  onFill?: (rowIds: string[], field: keyof ScheduleRow, value: unknown) => void;
+  /** Bulk-fill a custom-column value across rows. */
+  onFillCustom?: (rowIds: string[], key: string, value: string) => void;
   /** Worst audit severity per row id, for inline highlighting. */
   rowIssues?: Map<string, 'critical' | 'warning' | 'info'>;
   /** CPM-derived planned dates per row id (fallback when no explicit date). */
@@ -232,6 +237,8 @@ export function ScheduleGrid({
   gridTheme = 'light',
   customColumns,
   onCustomCommit,
+  onFill,
+  onFillCustom,
   rowIssues,
   cpmDates,
 }: ScheduleGridProps) {
@@ -364,6 +371,41 @@ export function ScheduleGrid({
     [onCommit, onCustomCommit],
   );
 
+  // Excel-like fill-down: Ctrl/Cmd+D copies the focused cell's value down into
+  // every other selected row (same column). Works for built-in & custom columns.
+  const onCellKeyDown = useCallback(
+    (e: CellKeyDownEvent<ScheduleRow>) => {
+      const ke = e.event as KeyboardEvent | null;
+      if (!ke || !(ke.ctrlKey || ke.metaKey) || ke.key.toLowerCase() !== 'd') return;
+      ke.preventDefault();
+      if (readOnly || !e.data || !e.column) return;
+      const api = apiRef.current;
+      if (!api) return;
+
+      const sourceId = e.data.row_id;
+      const targetIds = api
+        .getSelectedRows()
+        .map((r) => r.row_id)
+        .filter((id) => id !== sourceId);
+      if (targetIds.length === 0) return;
+
+      const colId = e.column.getColId();
+      if (colId.startsWith('custom:')) {
+        const key = colId.slice('custom:'.length);
+        onFillCustom?.(targetIds, key, e.data.custom?.[key] ?? '');
+        return;
+      }
+      if (colId === 'predecessors') {
+        onFill?.(targetIds, 'predecessors', e.data.predecessors.map((l) => ({ ...l })));
+        return;
+      }
+      const field = e.column.getColDef().field as keyof ScheduleRow | undefined;
+      if (!field) return;
+      onFill?.(targetIds, field, e.data[field]);
+    },
+    [readOnly, onFill, onFillCustom],
+  );
+
   // Colour rows by WBS nesting level; audit issues take precedence. Styles
   // live in globals.css (.plc-*); selected row is always gray (CSS).
   const getRowClass = useCallback(
@@ -391,6 +433,7 @@ export function ScheduleGrid({
         onGridReady={onGridReady}
         onSelectionChanged={onSelectionChanged}
         onCellValueChanged={onCellValueChanged}
+        onCellKeyDown={onCellKeyDown}
         getRowClass={getRowClass}
         stopEditingWhenCellsLoseFocus
         animateRows={false}

@@ -540,6 +540,8 @@ export function ScheduleEditor() {
             gridTheme={view.theme}
             customColumns={customColumns}
             onCustomCommit={store.updateCustom}
+            onFill={store.fillCell}
+            onFillCustom={store.fillCustom}
             rowIssues={rowIssues}
             cpmDates={cpmDates}
           />
@@ -605,7 +607,7 @@ export function ScheduleEditor() {
       <footer className="flex shrink-0 items-center gap-4 border-t bg-muted px-4 py-1 text-xs text-muted-foreground">
         <span>{store.rows.length} строк</span>
         <span className="ml-auto">
-          Двойной клик / Enter — редактировать · клик по задаче — детали снизу
+          Двойной клик / Enter — редактировать · клик по задаче — детали снизу · Ctrl+D — протянуть значение по выделенным строкам
         </span>
       </footer>
     </div>
