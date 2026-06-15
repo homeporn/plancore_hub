@@ -27,8 +27,8 @@ const ORDER: Step[] = ['object', 'params', 'preview'];
 const LABELS: Record<Step, string> = { object: 'Тип объекта', params: 'Параметры', preview: 'Предпросмотр' };
 
 interface ScheduleWizardProps {
-  /** Called with the generated rows when the user confirms. */
-  onCreate: (rows: ScheduleRow[]) => void;
+  /** Called with the generated rows (+ chosen scenario id) when confirmed. */
+  onCreate: (rows: ScheduleRow[], scenarioId: string | null) => void;
 }
 
 /**
@@ -41,6 +41,8 @@ export function ScheduleWizard({ onCreate }: ScheduleWizardProps) {
   const [loadingTypes, setLoadingTypes] = useState(true);
 
   const [objectType, setObjectType] = useState<string>('');
+  // Built-in scenario id chosen (drives the editor's planning mode); null = DB template.
+  const [scenarioId, setScenarioId] = useState<string | null>(null);
   const [objectName, setObjectName] = useState('');
   const [organization, setOrganization] = useState('');
   const [defaultDuration, setDefaultDuration] = useState(5);
@@ -59,6 +61,7 @@ export function ScheduleWizard({ onCreate }: ScheduleWizardProps) {
 
   const chooseObjectType = useCallback(async (type: string) => {
     setObjectType(type);
+    setScenarioId(null);
     setLoadingInput(true);
     try {
       setInput(await loadScaffoldInput(getBrowserClient(), type));
@@ -75,6 +78,7 @@ export function ScheduleWizard({ onCreate }: ScheduleWizardProps) {
     const scenario = getBuiltinScenario(id);
     if (!scenario) return;
     setObjectType(scenario.objectType);
+    setScenarioId(id);
     setInput(scenario.input);
     setStep('params');
   }, []);
@@ -225,7 +229,7 @@ export function ScheduleWizard({ onCreate }: ScheduleWizardProps) {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setStep('params')}>Назад</Button>
-            <Button onClick={() => onCreate(preview)} disabled={preview.length === 0}>
+            <Button onClick={() => onCreate(preview, scenarioId)} disabled={preview.length === 0}>
               Открыть в редакторе
             </Button>
           </div>

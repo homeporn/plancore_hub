@@ -40,7 +40,7 @@ import { CpmSummary } from './CpmSummary';
 import { ApprovalPanel } from '@/components/approval/ApprovalPanel';
 import { BatchHandoffDialog } from '@/components/handoff/BatchHandoffDialog';
 import { VolumeImportDialog } from '@/components/handoff/VolumeImportDialog';
-import { takeScheduleHandoff, getWorkingCopy, setWorkingCopy } from '@/lib/scheduleHandoff';
+import { takeScheduleHandoff, getWorkingCopy, setWorkingCopy, takePendingMode } from '@/lib/scheduleHandoff';
 import { useProject } from '@/context/ProjectProvider';
 import {
   loadCurrentScheduleRows,
@@ -197,6 +197,10 @@ export function ScheduleEditor() {
   // On mount, prefer wizard/template handoff; otherwise load the current
   // project's saved schedule (if a project is selected in the Hub).
   useEffect(() => {
+    // Planning mode chosen in the wizard, if any.
+    const pendingMode = takePendingMode();
+    if (pendingMode) setMode(pendingMode as Parameters<typeof setMode>[0]);
+
     const handoff = takeScheduleHandoff();
     if (handoff && handoff.length > 0) {
       store.loadRows(handoff);

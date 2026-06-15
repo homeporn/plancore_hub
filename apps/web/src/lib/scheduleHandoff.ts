@@ -14,6 +14,7 @@ import type { ScheduleRow } from '@plancore/core';
  */
 const KEY = 'plancore:schedule-handoff';
 const WORK_KEY = 'plancore:schedule-working-copy';
+const MODE_KEY = 'plancore:pending-planning-mode';
 
 const DATE_FIELDS: (keyof ScheduleRow)[] = [
   'startDate', 'endDate', 'actualStart', 'actualFinish', 'baselineStart', 'baselineFinish',
@@ -52,6 +53,27 @@ export function setScheduleHandoff(rows: ScheduleRow[]): void {
   } catch {
     /* storage unavailable — caller falls back to a blank editor */
   }
+}
+
+/** One-shot planning mode handed from the wizard to the editor. */
+export function setPendingMode(mode: string): void {
+  try {
+    sessionStorage.setItem(MODE_KEY, mode);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Consume the pending planning mode (returns it once, then clears it). */
+export function takePendingMode(): string | null {
+  let v: string | null = null;
+  try {
+    v = sessionStorage.getItem(MODE_KEY);
+    if (v) sessionStorage.removeItem(MODE_KEY);
+  } catch {
+    return null;
+  }
+  return v;
 }
 
 /** Consume the handoff (returns rows once, then clears it). */
