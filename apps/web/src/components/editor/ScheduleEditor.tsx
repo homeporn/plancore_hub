@@ -162,6 +162,8 @@ export function ScheduleEditor() {
         start: r.startDate ?? d?.start ?? null,
         finish: r.endDate ?? d?.end ?? null,
         status: r.taskStatus,
+        durationDays: r.duration,
+        currentPercent: r.percentComplete,
       };
     });
     const results = recalcProgressByTime(inputs, asOf, DEFAULT_CALENDAR);

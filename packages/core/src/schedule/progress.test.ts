@@ -40,4 +40,35 @@ describe('recalcProgressByTime', () => {
     const res = recalcProgressByTime([task({ start: null, finish: null })], d('2024-01-18'), DEFAULT_CALENDAR);
     expect(res).toHaveLength(0);
   });
+
+  it('re-derives finish from start+duration when progress is 0% (started, not finished)', () => {
+    // Start moved earlier; stale finish is in the past so the old rule would
+    // snap to 100%. With a 5-day duration and asOf one day in, it should be
+    // merely in progress, computed from start + duration.
+    const [r] = recalcProgressByTime(
+      [task({ start: d('2024-01-15'), finish: d('2024-01-10'), durationDays: 5, currentPercent: 0 })],
+      d('2024-01-16'),
+      DEFAULT_CALENDAR,
+    );
+    expect(r.taskStatus).toBe('IN_PROGRESS');
+    expect(r.percentComplete).toBe(20);
+  });
+
+  it('still uses the recorded finish when progress is already > 0%', () => {
+    const [r] = recalcProgressByTime(
+      [task({ durationDays: 5, currentPercent: 40 })],
+      d('2024-01-25'),
+      DEFAULT_CALENDAR,
+    );
+    expect(r).toMatchObject({ percentComplete: 100, taskStatus: 'COMPLETED' });
+  });
+
+  it('completes once the derived duration window has fully elapsed', () => {
+    const [r] = recalcProgressByTime(
+      [task({ start: d('2024-01-15'), finish: d('2024-01-10'), durationDays: 5, currentPercent: 0 })],
+      d('2024-01-22'),
+      DEFAULT_CALENDAR,
+    );
+    expect(r).toMatchObject({ percentComplete: 100, taskStatus: 'COMPLETED' });
+  });
 });

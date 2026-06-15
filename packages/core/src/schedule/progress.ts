@@ -8,7 +8,7 @@
  */
 
 import type { WorkCalendar } from '../calendar/types.js';
-import { workingDaysBetween } from '../calendar/calendar.js';
+import { workingDaysBetween, addWorkingDays } from '../calendar/calendar.js';
 import type { TaskStatus } from './types.js';
 
 export interface ProgressInput {
@@ -16,6 +16,10 @@ export interface ProgressInput {
   start: Date | null;
   finish: Date | null;
   status: TaskStatus;
+  /** Task duration in working days — used to derive the finish when re-starting. */
+  durationDays?: number | null;
+  /** Currently recorded progress (0–100); drives the "started, not finished" rule. */
+  currentPercent?: number | null;
 }
 
 export interface ProgressResult {
@@ -37,15 +41,26 @@ export function recalcProgressByTime(
   const out: ProgressResult[] = [];
   for (const t of tasks) {
     if (t.status === 'PAUSED') continue; // frozen
-    if (!t.start || !t.finish) continue; // need dates to compute
+    if (!t.start) continue; // need a start to compute
+
+    // "Started, not finished" rule: when the task has 0% recorded progress and
+    // its start is moved earlier, the task is merely started — its finish is
+    // re-derived from start + duration rather than trusting a stale finish date
+    // (which would otherwise snap the task to 100% the moment asOf passes it).
+    const notStarted = (t.currentPercent ?? 0) <= 0;
+    const finish =
+      notStarted && t.durationDays != null && t.durationDays > 0
+        ? addWorkingDays(t.start, t.durationDays, cal)
+        : t.finish;
+    if (!finish) continue; // need an end to compute
 
     let percent: number;
     if (asOf <= t.start) {
       percent = 0;
-    } else if (asOf >= t.finish) {
+    } else if (asOf >= finish) {
       percent = 100;
     } else {
-      const total = workingDaysBetween(t.start, t.finish, cal);
+      const total = workingDaysBetween(t.start, finish, cal);
       const elapsed = workingDaysBetween(t.start, asOf, cal);
       percent = total > 0 ? Math.round((elapsed / total) * 100) : 0;
       percent = Math.max(0, Math.min(100, percent));
