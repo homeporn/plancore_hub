@@ -53,6 +53,9 @@ function buildTheme(density: Density, dark: boolean) {
     headerFontSize: 12,
     rowHeight: ROW_HEIGHTS[density],
     headerHeight: ROW_HEIGHTS[density] + 2,
+    // Let our per-level row classes own the row background (no zebra striping
+    // painting over the custom colours from the View settings).
+    oddRowBackgroundColor: 'transparent',
   });
 }
 

@@ -89,18 +89,44 @@
   --plc-selected-bg: #e5e7eb; --plc-selected-fg: #0f172a;
 }
 
-.ag-row.plc-lvl-0 { background: var(--plc-lvl0-bg); color: var(--plc-lvl0-fg); font-weight: 600; }
-.ag-row.plc-lvl-1 { background: var(--plc-lvl1-bg); color: var(--plc-lvl1-fg); font-weight: 500; }
-.ag-row.plc-lvl-2 { background: var(--plc-lvl2-bg); color: var(--plc-lvl2-fg); }
-.ag-row.plc-lvl-3 { background: var(--plc-lvl3-bg); color: var(--plc-lvl3-fg); }
-.ag-row.plc-leaf  { background: var(--plc-leaf-bg); color: var(--plc-leaf-fg); }
-.ag-row.plc-warning { background: #fffbeb; color: #92400e; }
-.ag-row.plc-critical { background: #fef2f2; color: #991b1b; }
+/* Row colouring. With the AG Grid Theming API the cells paint their own
+ * (theme) background on top of the row, so the level colour must be applied to
+ * the cells too and win over the theme — hence !important and transparent cells. */
+.ag-row.plc-lvl-0 { font-weight: 600; }
+.ag-row.plc-lvl-1 { font-weight: 500; }
+.ag-row.plc-lvl-0 { --plc-row-bg: var(--plc-lvl0-bg); --plc-row-fg: var(--plc-lvl0-fg); }
+.ag-row.plc-lvl-1 { --plc-row-bg: var(--plc-lvl1-bg); --plc-row-fg: var(--plc-lvl1-fg); }
+.ag-row.plc-lvl-2 { --plc-row-bg: var(--plc-lvl2-bg); --plc-row-fg: var(--plc-lvl2-fg); }
+.ag-row.plc-lvl-3 { --plc-row-bg: var(--plc-lvl3-bg); --plc-row-fg: var(--plc-lvl3-fg); }
+.ag-row.plc-leaf  { --plc-row-bg: var(--plc-leaf-bg); --plc-row-fg: var(--plc-leaf-fg); }
+.ag-row.plc-warning { --plc-row-bg: #fffbeb; --plc-row-fg: #92400e; }
+.ag-row.plc-critical { --plc-row-bg: #fef2f2; --plc-row-fg: #991b1b; }
+
+.ag-row.plc-lvl-0,
+.ag-row.plc-lvl-1,
+.ag-row.plc-lvl-2,
+.ag-row.plc-lvl-3,
+.ag-row.plc-leaf,
+.ag-row.plc-warning,
+.ag-row.plc-critical {
+  background-color: var(--plc-row-bg) !important;
+  color: var(--plc-row-fg) !important;
+}
+.ag-row.plc-lvl-0 .ag-cell,
+.ag-row.plc-lvl-1 .ag-cell,
+.ag-row.plc-lvl-2 .ag-cell,
+.ag-row.plc-lvl-3 .ag-cell,
+.ag-row.plc-leaf .ag-cell,
+.ag-row.plc-warning .ag-cell,
+.ag-row.plc-critical .ag-cell {
+  background-color: transparent !important;
+  color: var(--plc-row-fg) !important;
+}
 
 /* Active / selected row — always gray, wins over level colours. */
 .ag-row.ag-row-selected,
 .ag-row.ag-row-selected .ag-cell {
-  background: var(--plc-selected-bg) !important;
+  background-color: var(--plc-selected-bg) !important;
   color: var(--plc-selected-fg) !important;
 }
 
