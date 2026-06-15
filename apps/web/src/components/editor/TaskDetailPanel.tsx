@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { X } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   formatPredecessors,
   parsePredecessors,
@@ -36,6 +36,12 @@ interface Props {
   readOnly: boolean;
   /** CPM-derived dates, used as placeholders when no explicit date is set. */
   effective?: { start: Date | null; end: Date | null };
+  /** 0-based position within the multi-selection. */
+  index: number;
+  /** Number of selected rows (>1 enables prev/next). */
+  total: number;
+  onPrev: () => void;
+  onNext: () => void;
   onField: <K extends keyof ScheduleRow>(field: K, value: ScheduleRow[K]) => void;
   onCustom: (key: string, value: string) => void;
   onClose: () => void;
@@ -48,6 +54,10 @@ export function TaskDetailPanel({
   customColumns,
   readOnly,
   effective,
+  index,
+  total,
+  onPrev,
+  onNext,
   onField,
   onCustom,
   onClose,
@@ -186,6 +196,21 @@ export function TaskDetailPanel({
           />
         </Field>
       </div>
+
+      {/* Navigation across the multi-selection */}
+      {total > 1 && (
+        <div className="flex shrink-0 items-center justify-center gap-3 border-t px-4 py-2">
+          <Button variant="outline" size="sm" disabled={index <= 0} onClick={onPrev}>
+            <ChevronLeft className="h-4 w-4" /> Предыдущая
+          </Button>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {index + 1} / {total}
+          </span>
+          <Button variant="outline" size="sm" disabled={index >= total - 1} onClick={onNext}>
+            Следующая <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

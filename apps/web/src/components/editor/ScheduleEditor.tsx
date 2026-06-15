@@ -35,6 +35,7 @@ import { EditorViewDialog } from './EditorViewDialog';
 import { GanttChart } from './GanttChart';
 import { TaskDetailPanel } from './TaskDetailPanel';
 import { useEditorView } from './useEditorView';
+import { PLANNING_MODES, planningCaps } from './planningModes';
 import { CpmSummary } from './CpmSummary';
 import { ApprovalPanel } from '@/components/approval/ApprovalPanel';
 import { BatchHandoffDialog } from '@/components/handoff/BatchHandoffDialog';
@@ -63,7 +64,8 @@ export function ScheduleEditor() {
   // Target date for the progress recalculation (defaults to today).
   const [recalcDate, setRecalcDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [ganttOpen, setGanttOpen] = useState(false);
-  const { view, colorVars, toggleColumn, setDensity, setTheme, setColor, resetColors, reset } = useEditorView();
+  const { view, colorVars, toggleColumn, setDensity, setTheme, setMode, setColor, resetColors, reset } = useEditorView();
+  const caps = planningCaps(view.mode);
   const collab = useScheduleCollab(current?.id ?? null, (rows) => store.loadRows(rows));
 
   // Load the project's custom column definitions.
@@ -180,12 +182,16 @@ export function ScheduleEditor() {
     store.updateCell(succId, 'predecessors', [...succ.predecessors, mkLink(predId)]);
   }, [store]);
 
-  // The single selected row drives the bottom detail panel.
+  // The bottom detail panel shows the "current" selected row; with several
+  // rows checked, prev/next step through them.
+  const [detailIndex, setDetailIndex] = useState(0);
+  const selCount = store.selectedRowIds.length;
+  const curDetailIndex = selCount > 0 ? Math.min(detailIndex, selCount - 1) : 0;
   const detailRow = useMemo(
-    () => (store.selectedRowIds.length === 1
-      ? store.rows.find((r) => r.row_id === store.selectedRowIds[0]) ?? null
+    () => (selCount > 0
+      ? store.rows.find((r) => r.row_id === store.selectedRowIds[curDetailIndex]) ?? null
       : null),
-    [store.selectedRowIds, store.rows],
+    [store.selectedRowIds, store.rows, selCount, curDetailIndex],
   );
 
   // On mount, prefer wizard/template handoff; otherwise load the current
@@ -304,6 +310,18 @@ export function ScheduleEditor() {
           </Badge>
         )}
 
+        {/* Planning mode — gates feature availability per template kind. */}
+        <label className="flex items-center gap-1 text-xs text-muted-foreground">
+          Режим:
+          <select
+            value={view.mode}
+            onChange={(e) => setMode(e.target.value as typeof view.mode)}
+            className="rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            {PLANNING_MODES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+          </select>
+        </label>
+
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {current && (
             <>
@@ -368,12 +386,16 @@ export function ScheduleEditor() {
 
           {current && (
             <>
-              <Button variant="outline" size="sm" onClick={() => setVolumeImportOpen(true)}>
-                <Boxes className="h-4 w-4" /> Тома
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setHandoffOpen(true)}>
-                <Send className="h-4 w-4" /> Задания
-              </Button>
+              {caps.volumes && (
+                <Button variant="outline" size="sm" onClick={() => setVolumeImportOpen(true)}>
+                  <Boxes className="h-4 w-4" /> Тома
+                </Button>
+              )}
+              {caps.handoff && (
+                <Button variant="outline" size="sm" onClick={() => setHandoffOpen(true)}>
+                  <Send className="h-4 w-4" /> Задания
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={() => setApprovalOpen(true)}>
                 <CheckSquare className="h-4 w-4" /> Согласование
               </Button>
@@ -449,42 +471,43 @@ export function ScheduleEditor() {
         />
       )}
 
-      {/* Grid */}
-      <div className="min-h-0 flex-1" style={colorVars}>
-        <ScheduleGrid
-          rows={store.visibleRows}
-          cpmOutput={store.cpmOutput}
-          onCommit={handleCommit}
-          readOnly={readOnly}
-          selectedRowIds={store.selectedRowIds}
-          onSelectionChange={store.setSelectedRowIds}
-          rowMeta={store.rowMeta}
-          onToggleCollapse={store.toggleCollapse}
-          visibleColIds={view.visibleCols}
-          density={view.density}
-          gridTheme={view.theme}
-          customColumns={customColumns}
-          onCustomCommit={store.updateCustom}
-          rowIssues={rowIssues}
-          cpmDates={cpmDates}
-        />
-      </div>
-
-      {/* Gantt frame (editable) */}
-      {ganttOpen && (
-        <div className="h-72 shrink-0 border-t bg-background">
-          <GanttChart
+      {/* Grid + Gantt (side by side; Gantt on the right) */}
+      <div className="flex min-h-0 flex-1">
+        <div className="min-w-0 flex-1" style={colorVars}>
+          <ScheduleGrid
             rows={store.visibleRows}
-            dates={cpmDates}
-            criticalIds={criticalIds}
-            selectedId={store.selectedRowIds.length === 1 ? store.selectedRowIds[0] : null}
+            cpmOutput={store.cpmOutput}
+            onCommit={handleCommit}
             readOnly={readOnly}
-            onSelect={(id) => store.setSelectedRowIds([id])}
-            onResize={(id, days) => store.updateCell(id, 'duration', days)}
-            onLink={handleGanttLink}
+            selectedRowIds={store.selectedRowIds}
+            onSelectionChange={store.setSelectedRowIds}
+            rowMeta={store.rowMeta}
+            onToggleCollapse={store.toggleCollapse}
+            visibleColIds={view.visibleCols}
+            density={view.density}
+            gridTheme={view.theme}
+            customColumns={customColumns}
+            onCustomCommit={store.updateCustom}
+            rowIssues={rowIssues}
+            cpmDates={cpmDates}
           />
         </div>
-      )}
+
+        {ganttOpen && (
+          <div className="w-[480px] shrink-0 border-l bg-background">
+            <GanttChart
+              rows={store.visibleRows}
+              dates={cpmDates}
+              criticalIds={criticalIds}
+              selectedId={detailRow?.row_id ?? null}
+              readOnly={readOnly}
+              onSelect={(id) => store.setSelectedRowIds([id])}
+              onResize={(id, days) => store.updateCell(id, 'duration', days)}
+              onLink={handleGanttLink}
+            />
+          </div>
+        )}
+      </div>
 
       {/* Bottom task detail panel */}
       {detailRow && (
@@ -494,6 +517,10 @@ export function ScheduleEditor() {
             rows={store.rows}
             customColumns={customColumns}
             readOnly={readOnly}
+            index={curDetailIndex}
+            total={selCount}
+            onPrev={() => setDetailIndex(Math.max(0, curDetailIndex - 1))}
+            onNext={() => setDetailIndex(Math.min(selCount - 1, curDetailIndex + 1))}
             effective={cpmDates.get(detailRow.row_id)
               ? { start: cpmDates.get(detailRow.row_id)!.start, end: cpmDates.get(detailRow.row_id)!.end }
               : undefined}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DEFAULT_VISIBLE_COLS } from './columnDefs';
+import { DEFAULT_PLANNING_MODE, type PlanningModeId } from './planningModes';
 
 export type Density = 'compact' | 'normal' | 'comfortable';
 export type GridTheme = 'light' | 'dark';
@@ -16,6 +17,8 @@ export interface EditorView {
   theme: GridTheme;
   /** Row colours by nesting level / state (overrides globals.css defaults). */
   colors: LevelColors;
+  /** Planning mode — gates feature availability. */
+  mode: PlanningModeId;
 }
 
 /** Color keys ↔ labels ↔ CSS variable names. */
@@ -49,6 +52,7 @@ const DEFAULT_VIEW: EditorView = {
   density: 'normal',
   theme: 'light',
   colors: DEFAULT_COLORS,
+  mode: DEFAULT_PLANNING_MODE,
 };
 
 /** Editor table-view preferences (columns / density / theme / colours), persisted locally. */
@@ -96,6 +100,7 @@ export function useEditorView() {
 
   const setDensity = useCallback((density: Density) => persist({ ...view, density }), [persist, view]);
   const setTheme = useCallback((theme: GridTheme) => persist({ ...view, theme }), [persist, view]);
+  const setMode = useCallback((mode: PlanningModeId) => persist({ ...view, mode }), [persist, view]);
   const setColor = useCallback(
     (key: string, value: string) => persist({ ...view, colors: { ...view.colors, [key]: value } }),
     [persist, view],
@@ -115,5 +120,5 @@ export function useEditorView() {
     return style as React.CSSProperties;
   }, [view.colors]);
 
-  return { view, colorVars, toggleColumn, setDensity, setTheme, setColor, resetColors, reset };
+  return { view, colorVars, toggleColumn, setDensity, setTheme, setMode, setColor, resetColors, reset };
 }
