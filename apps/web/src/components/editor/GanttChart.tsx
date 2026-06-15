@@ -6,7 +6,7 @@ import { workingDaysBetween, DEFAULT_CALENDAR, type ScheduleRow } from '@plancor
 const DAY_W = 22;
 const ROW_H = 28;
 const HEADER_H = 28;
-const LABEL_W = 200;
+const LABEL_W_DEFAULT = 200;
 
 interface Dates {
   start: Date;
@@ -25,6 +25,8 @@ interface Props {
   onResize: (rowId: string, durationDays: number) => void;
   /** Create an FS dependency predecessor → successor. */
   onLink: (predId: string, succId: string) => void;
+  /** Show the task-name label column inside the chart (hidden when shown next to the grid). */
+  showLabels?: boolean;
 }
 
 const DAY_MS = 86_400_000;
@@ -48,9 +50,11 @@ export function GanttChart({
   onSelect,
   onResize,
   onLink,
+  showLabels = true,
 }: Props) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [drag, setDrag] = useState<Drag>(null);
+  const LABEL_W = showLabels ? LABEL_W_DEFAULT : 0;
 
   const range = useMemo(() => {
     let min: Date | null = null;
@@ -68,7 +72,7 @@ export function GanttChart({
 
   const xOf = useCallback(
     (d: Date) => (range ? LABEL_W + diffDays(range.min, d) * DAY_W : LABEL_W),
-    [range],
+    [range, LABEL_W],
   );
 
   const localX = useCallback((clientX: number) => {
@@ -100,7 +104,7 @@ export function GanttChart({
         return null;
       });
     },
-    [range, dates, rows, localX, localY, onResize, onLink],
+    [range, dates, rows, localX, localY, onResize, onLink, LABEL_W],
   );
 
   // Window-level drag tracking.
@@ -212,9 +216,11 @@ export function GanttChart({
             <g key={r.row_id}>
               {selected && <rect x={0} y={y} width={width} height={ROW_H} fill="var(--accent)" opacity={0.5} />}
               {/* Name label */}
-              <text x={8 + Math.min(r.sdr.split('.').length - 1, 4) * 10} y={y + ROW_H / 2 + 4} fontSize={11} fill="var(--foreground)">
-                {(r.sdr ? r.sdr + '  ' : '') + (r.name.length > 24 ? r.name.slice(0, 23) + '…' : r.name)}
-              </text>
+              {showLabels && (
+                <text x={8 + Math.min(r.sdr.split('.').length - 1, 4) * 10} y={y + ROW_H / 2 + 4} fontSize={11} fill="var(--foreground)">
+                  {(r.sdr ? r.sdr + '  ' : '') + (r.name.length > 24 ? r.name.slice(0, 23) + '…' : r.name)}
+                </text>
+              )}
 
               {d && (
                 <g onClick={() => onSelect(r.row_id)} style={{ cursor: 'pointer' }}>

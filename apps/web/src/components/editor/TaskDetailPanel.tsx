@@ -42,6 +42,8 @@ interface Props {
   total: number;
   onPrev: () => void;
   onNext: () => void;
+  /** Jump to another task (predecessor/successor chip click). */
+  onNavigate: (rowId: string) => void;
   onField: <K extends keyof ScheduleRow>(field: K, value: ScheduleRow[K]) => void;
   onCustom: (key: string, value: string) => void;
   onClose: () => void;
@@ -58,22 +60,35 @@ export function TaskDetailPanel({
   total,
   onPrev,
   onNext,
+  onNavigate,
   onField,
   onCustom,
   onClose,
 }: Props) {
-  const { idToSdr, sdrToId } = useMemo(() => {
+  const { idToSdr, sdrToId, idToName } = useMemo(() => {
     const idToSdr = new Map<string, string>();
     const sdrToId = new Map<string, string>();
+    const idToName = new Map<string, string>();
     for (const r of rows) {
+      idToName.set(r.row_id, r.name);
       if (!r.sdr) continue;
       idToSdr.set(r.row_id, r.sdr);
       sdrToId.set(r.sdr, r.row_id);
     }
-    return { idToSdr, sdrToId };
+    return { idToSdr, sdrToId, idToName };
   }, [rows]);
 
   const predText = formatPredecessors(row.predecessors, idToSdr);
+
+  // Predecessor / successor links as navigable chips.
+  const predLinks = useMemo(
+    () => row.predecessors.map((p) => p.rowId),
+    [row.predecessors],
+  );
+  const succLinks = useMemo(
+    () => rows.filter((r) => r.predecessors.some((p) => p.rowId === row.row_id)).map((r) => r.row_id),
+    [rows, row.row_id],
+  );
 
   return (
     <div className="flex h-full flex-col border-t bg-card">
@@ -140,6 +155,13 @@ export function TaskDetailPanel({
             placeholder="напр. 1.2; 3SS-2"
             onChange={(e) => onField('predecessors', parsePredecessors(e.target.value, sdrToId, row.row_id))}
           />
+          <LinkChips ids={predLinks} idToSdr={idToSdr} idToName={idToName} onNavigate={onNavigate} />
+        </Field>
+
+        <Field label="Последователи (СДР)">
+          {succLinks.length > 0
+            ? <LinkChips ids={succLinks} idToSdr={idToSdr} idToName={idToName} onNavigate={onNavigate} />
+            : <span className="text-xs text-muted-foreground">—</span>}
         </Field>
 
         <Field label="Начало">
@@ -211,6 +233,36 @@ export function TaskDetailPanel({
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Clickable SDR-code chips that jump to the linked task; tooltip shows its name. */
+function LinkChips({
+  ids,
+  idToSdr,
+  idToName,
+  onNavigate,
+}: {
+  ids: string[];
+  idToSdr: Map<string, string>;
+  idToName: Map<string, string>;
+  onNavigate: (rowId: string) => void;
+}) {
+  if (ids.length === 0) return null;
+  return (
+    <div className="mt-1 flex flex-wrap gap-1">
+      {ids.map((id) => (
+        <button
+          key={id}
+          type="button"
+          onClick={() => onNavigate(id)}
+          title={idToName.get(id) || undefined}
+          className="rounded border border-input bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground hover:bg-accent hover:text-accent-foreground"
+        >
+          {idToSdr.get(id) || '—'}
+        </button>
+      ))}
     </div>
   );
 }

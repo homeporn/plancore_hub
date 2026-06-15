@@ -64,6 +64,9 @@ export function ScheduleEditor() {
   // Target date for the progress recalculation (defaults to today).
   const [recalcDate, setRecalcDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [ganttOpen, setGanttOpen] = useState(false);
+  // Resizable Gantt frame width and detail panel height (px).
+  const [ganttWidth, setGanttWidth] = useState(480);
+  const [detailHeight, setDetailHeight] = useState(256);
   const { view, colorVars, toggleColumn, setDensity, setTheme, setMode, setColor, resetColors, reset } = useEditorView();
   const caps = planningCaps(view.mode);
   const collab = useScheduleCollab(current?.id ?? null, (rows) => store.loadRows(rows));
@@ -269,6 +272,40 @@ export function ScheduleEditor() {
   const handleCommit = useCallback((rowId: string, field: keyof ScheduleRow, value: unknown) => {
     store.updateCell(rowId, field, value as ScheduleRow[typeof field]);
   }, [store]);
+
+  // Drag the Gantt frame's left edge to resize its width.
+  const startGanttResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = ganttWidth;
+    const move = (ev: MouseEvent) => {
+      const next = startW + (startX - ev.clientX);
+      setGanttWidth(Math.max(280, Math.min(1000, next)));
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  }, [ganttWidth]);
+
+  // Drag the detail panel's top edge to resize its height.
+  const startDetailResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = detailHeight;
+    const move = (ev: MouseEvent) => {
+      const next = startH + (startY - ev.clientY);
+      setDetailHeight(Math.max(120, Math.min(640, next)));
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  }, [detailHeight]);
 
   // Ctrl/Cmd+C / +V copy & paste whole rows — but not while editing a cell.
   useEffect(() => {
@@ -498,40 +535,58 @@ export function ScheduleEditor() {
         </div>
 
         {ganttOpen && (
-          <div className="w-[480px] shrink-0 border-l bg-background">
-            <GanttChart
-              rows={store.visibleRows}
-              dates={cpmDates}
-              criticalIds={criticalIds}
-              selectedId={detailRow?.row_id ?? null}
-              readOnly={readOnly}
-              onSelect={(id) => store.setSelectedRowIds([id])}
-              onResize={(id, days) => store.updateCell(id, 'duration', days)}
-              onLink={handleGanttLink}
+          <div className="flex shrink-0" style={{ width: ganttWidth }}>
+            {/* Drag handle to resize the Gantt frame width */}
+            <div
+              onMouseDown={startGanttResize}
+              className="w-1 shrink-0 cursor-ew-resize bg-border hover:bg-primary"
+              title="Потяните, чтобы изменить ширину"
             />
+            <div className="min-w-0 flex-1 bg-background">
+              <GanttChart
+                rows={store.visibleRows}
+                dates={cpmDates}
+                criticalIds={criticalIds}
+                selectedId={detailRow?.row_id ?? null}
+                readOnly={readOnly}
+                onSelect={(id) => store.setSelectedRowIds([id])}
+                onResize={(id, days) => store.updateCell(id, 'duration', days)}
+                onLink={handleGanttLink}
+                showLabels={false}
+              />
+            </div>
           </div>
         )}
       </div>
 
       {/* Bottom task detail panel */}
       {detailRow && (
-        <div className="h-64 shrink-0">
-          <TaskDetailPanel
-            row={detailRow}
-            rows={store.rows}
-            customColumns={customColumns}
-            readOnly={readOnly}
-            index={curDetailIndex}
-            total={selCount}
-            onPrev={() => setDetailIndex(Math.max(0, curDetailIndex - 1))}
-            onNext={() => setDetailIndex(Math.min(selCount - 1, curDetailIndex + 1))}
-            effective={cpmDates.get(detailRow.row_id)
-              ? { start: cpmDates.get(detailRow.row_id)!.start, end: cpmDates.get(detailRow.row_id)!.end }
-              : undefined}
-            onField={(field, value) => store.updateCell(detailRow.row_id, field, value)}
-            onCustom={(key, value) => store.updateCustom(detailRow.row_id, key, value)}
-            onClose={() => store.setSelectedRowIds([])}
+        <div className="shrink-0" style={{ height: detailHeight }}>
+          {/* Drag handle to resize the panel height */}
+          <div
+            onMouseDown={startDetailResize}
+            className="h-1 cursor-ns-resize bg-border hover:bg-primary"
+            title="Потяните, чтобы изменить высоту"
           />
+          <div className="h-[calc(100%-0.25rem)]">
+            <TaskDetailPanel
+              row={detailRow}
+              rows={store.rows}
+              customColumns={customColumns}
+              readOnly={readOnly}
+              index={curDetailIndex}
+              total={selCount}
+              onPrev={() => setDetailIndex(Math.max(0, curDetailIndex - 1))}
+              onNext={() => setDetailIndex(Math.min(selCount - 1, curDetailIndex + 1))}
+              onNavigate={(id) => { setDetailIndex(0); store.setSelectedRowIds([id]); }}
+              effective={cpmDates.get(detailRow.row_id)
+                ? { start: cpmDates.get(detailRow.row_id)!.start, end: cpmDates.get(detailRow.row_id)!.end }
+                : undefined}
+              onField={(field, value) => store.updateCell(detailRow.row_id, field, value)}
+              onCustom={(key, value) => store.updateCustom(detailRow.row_id, key, value)}
+              onClose={() => store.setSelectedRowIds([])}
+            />
+          </div>
         </div>
       )}
 
