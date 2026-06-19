@@ -6,8 +6,10 @@ import {
   sendChatMessage,
   deleteChatMessage,
   listProjectMembers,
+  uploadChatImage,
   chatRowToMessage,
   type ChatMessage,
+  type ChatAttachments,
 } from '@plancore/data';
 import { getBrowserClient } from '@/lib/supabase/browser';
 import { useAuth } from '@/lib/useAuth';
@@ -17,7 +19,8 @@ export interface ChatApi {
   /** author_id → display email (resolved from project members). */
   authorEmail: (id: string) => string;
   loading: boolean;
-  send: (body: string) => Promise<void>;
+  send: (body: string, attachments?: ChatAttachments) => Promise<void>;
+  uploadImage: (file: File) => Promise<string>;
   remove: (id: string) => Promise<void>;
   selfId: string | null;
 }
@@ -73,12 +76,18 @@ export function useProjectChat(projectId: string | null): ChatApi {
     };
   }, [projectId]);
 
-  const send = useCallback(async (body: string) => {
+  const send = useCallback(async (body: string, attachments: ChatAttachments = {}) => {
     const text = body.trim();
-    if (!projectId || !user || !text) return;
-    // Optimistic insert is handled by the realtime echo; just persist.
-    await sendChatMessage(getBrowserClient(), projectId, user.id, text);
+    const hasAttachment = !!attachments.imageUrl || !!attachments.taskRefId;
+    if (!projectId || !user || (!text && !hasAttachment)) return;
+    // The realtime INSERT echo appends the message to the list.
+    await sendChatMessage(getBrowserClient(), projectId, user.id, text, attachments);
   }, [projectId, user]);
+
+  const uploadImage = useCallback(async (file: File) => {
+    if (!projectId) throw new Error('Нет проекта');
+    return uploadChatImage(getBrowserClient(), projectId, file);
+  }, [projectId]);
 
   const remove = useCallback(async (id: string) => {
     await deleteChatMessage(getBrowserClient(), id);
@@ -89,5 +98,5 @@ export function useProjectChat(projectId: string | null): ChatApi {
     [],
   );
 
-  return { messages, authorEmail, loading, send, remove, selfId: user?.id ?? null };
+  return { messages, authorEmail, loading, send, uploadImage, remove, selfId: user?.id ?? null };
 }

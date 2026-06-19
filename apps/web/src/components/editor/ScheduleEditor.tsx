@@ -492,6 +492,10 @@ export function ScheduleEditor() {
             projectName={current.name}
             open={chatOpen}
             onOpenChange={setChatOpen}
+            tasks={store.rows
+              .filter((r) => r.name?.trim())
+              .map((r) => ({ id: r.row_id, label: r.name }))}
+            onOpenTask={(id) => { setDetailIndex(0); store.setSelectedRowIds([id]); }}
           />
           {roleCaps.canManageMembers && (
             <MembersDialog

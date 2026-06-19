@@ -21,10 +21,12 @@ export {
   listChatMessages,
   sendChatMessage,
   deleteChatMessage,
+  uploadChatImage,
   chatRowToMessage,
   type ProjectRole,
   type ProjectMember,
   type ChatMessage,
+  type ChatAttachments,
 } from './repositories/chat.js';
 export {
   wbsTemplateToNode,
