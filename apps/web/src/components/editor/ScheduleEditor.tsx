@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Upload, Boxes, Send, CheckSquare, SlidersHorizontal, AlertTriangle, CalendarCheck, RefreshCw, GanttChartSquare } from 'lucide-react';
+import { Upload, Boxes, Send, CheckSquare, SlidersHorizontal, AlertTriangle, CalendarCheck, RefreshCw, GanttChartSquare, MessageSquare, Users } from 'lucide-react';
 import {
   readSheetRaw,
   parseMsProjectXml,
@@ -38,6 +38,9 @@ import { useEditorView } from './useEditorView';
 import { PLANNING_MODES, planningCaps } from './planningModes';
 import { CpmSummary } from './CpmSummary';
 import { ApprovalPanel } from '@/components/approval/ApprovalPanel';
+import { ChatPanel } from '@/components/chat/ChatPanel';
+import { MembersDialog } from '@/components/chat/MembersDialog';
+import { useProjectRole } from '@/components/chat/useProjectRole';
 import { BatchHandoffDialog } from '@/components/handoff/BatchHandoffDialog';
 import { VolumeImportDialog } from '@/components/handoff/VolumeImportDialog';
 import { takeScheduleHandoff, getWorkingCopy, setWorkingCopy, takePendingMode } from '@/lib/scheduleHandoff';
@@ -64,6 +67,8 @@ export function ScheduleEditor() {
   // Target date for the progress recalculation (defaults to today).
   const [recalcDate, setRecalcDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [ganttOpen, setGanttOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
   // Excel column-mapping dialog state.
   const [mapping, setMapping] = useState<{ headers: string[]; rows: Record<string, unknown>[] } | null>(null);
   // Resizable Gantt frame width and detail panel height (px).
@@ -71,6 +76,7 @@ export function ScheduleEditor() {
   const [detailHeight, setDetailHeight] = useState(256);
   const { view, colorVars, toggleColumn, setDensity, setTheme, setMode, setColor, resetColors, reset } = useEditorView();
   const caps = planningCaps(view.mode);
+  const roleCaps = useProjectRole(current?.id ?? null);
   const collab = useScheduleCollab(current?.id ?? null, (rows) => store.loadRows(rows));
 
   // Load the project's custom column definitions.
@@ -109,7 +115,8 @@ export function ScheduleEditor() {
     }
   }, [reloadCustomColumns]);
   // A version that isn't editable (approved / in review) locks all edits.
-  const readOnly = current ? !collab.editable : false;
+  // Locked by version state (approved/in-review) OR by role (viewer can't edit).
+  const readOnly = current ? (!collab.editable || (!roleCaps.loading && !roleCaps.canEdit)) : false;
 
   // Live audit of the current rows for inline highlighting + a findings badge.
   const audit = useMemo(() => runAudit(scheduleToAuditTasks(store.rows)), [store.rows]);
@@ -443,6 +450,14 @@ export function ScheduleEditor() {
               <Button variant="outline" size="sm" onClick={() => setApprovalOpen(true)}>
                 <CheckSquare className="h-4 w-4" /> Согласование
               </Button>
+              <Button variant="outline" size="sm" onClick={() => setChatOpen(true)}>
+                <MessageSquare className="h-4 w-4" /> Чат
+              </Button>
+              {roleCaps.canManageMembers && (
+                <Button variant="outline" size="sm" onClick={() => setMembersOpen(true)}>
+                  <Users className="h-4 w-4" /> Участники
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -469,6 +484,25 @@ export function ScheduleEditor() {
         onOutdent={() => store.outdentRows(store.selectedRowIds)}
         onRenumber={() => store.renumber()}
       />
+
+      {current && (
+        <>
+          <ChatPanel
+            projectId={current.id}
+            projectName={current.name}
+            open={chatOpen}
+            onOpenChange={setChatOpen}
+          />
+          {roleCaps.canManageMembers && (
+            <MembersDialog
+              projectId={current.id}
+              projectName={current.name}
+              open={membersOpen}
+              onOpenChange={setMembersOpen}
+            />
+          )}
+        </>
+      )}
 
       <ColumnMappingDialog
         open={mapping !== null}

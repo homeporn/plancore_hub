@@ -13,6 +13,20 @@ export {
   type ProjectMeta,
 } from './repositories/projects.js';
 export {
+  getMyProjectRole,
+  listProjectMembers,
+  setMemberRole,
+  addMemberByEmail,
+  removeMember,
+  listChatMessages,
+  sendChatMessage,
+  deleteChatMessage,
+  chatRowToMessage,
+  type ProjectRole,
+  type ProjectMember,
+  type ChatMessage,
+} from './repositories/chat.js';
+export {
   wbsTemplateToNode,
   dependencyRowToRule,
   durationRowToModel,
