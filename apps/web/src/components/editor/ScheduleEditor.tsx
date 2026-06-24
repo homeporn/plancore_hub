@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Upload, Boxes, Send, CheckSquare, SlidersHorizontal, AlertTriangle, CalendarCheck, RefreshCw, GanttChartSquare, MessageSquare, Users } from 'lucide-react';
+import { Upload, Boxes, Send, CheckSquare, SlidersHorizontal, AlertTriangle, CalendarCheck, RefreshCw, GanttChartSquare, MessageSquare, Users, Plus, Diamond, CopyPlus, Copy, ClipboardPaste, ArrowUp, ArrowDown, IndentIncrease, IndentDecrease, Trash2, PanelBottomOpen } from 'lucide-react';
 import {
   readSheetRaw,
   parseMsProjectXml,
@@ -39,6 +39,7 @@ import { PLANNING_MODES, planningCaps } from './planningModes';
 import { CpmSummary } from './CpmSummary';
 import { ApprovalPanel } from '@/components/approval/ApprovalPanel';
 import { ChatPanel } from '@/components/chat/ChatPanel';
+import { GridContextMenu, type MenuItem } from './GridContextMenu';
 import { MembersDialog } from '@/components/chat/MembersDialog';
 import { useProjectRole } from '@/components/chat/useProjectRole';
 import { BatchHandoffDialog } from '@/components/handoff/BatchHandoffDialog';
@@ -69,6 +70,8 @@ export function ScheduleEditor() {
   const [ganttOpen, setGanttOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
+  // Right-click quick-commands menu over the task grid.
+  const [rowMenu, setRowMenu] = useState<{ x: number; y: number; rowId: string } | null>(null);
   // Excel column-mapping dialog state.
   const [mapping, setMapping] = useState<{ headers: string[]; rows: Record<string, unknown>[] } | null>(null);
   // Resizable Gantt frame width and detail panel height (px).
@@ -507,6 +510,67 @@ export function ScheduleEditor() {
         </>
       )}
 
+      {rowMenu && (() => {
+        const ids = store.selectedRowIds.includes(rowMenu.rowId)
+          ? store.selectedRowIds
+          : [rowMenu.rowId];
+        const many = ids.length > 1;
+        const close = () => setRowMenu(null);
+        const items: MenuItem[] = [
+          {
+            label: 'Открыть детали', icon: <PanelBottomOpen className="h-4 w-4" />,
+            onSelect: () => { store.setSelectedRowIds([rowMenu.rowId]); setDetailIndex(0); },
+          },
+          { type: 'separator' },
+          {
+            label: 'Добавить задачу ниже', icon: <Plus className="h-4 w-4" />, disabled: readOnly,
+            onSelect: () => store.addRowAfter(rowMenu.rowId),
+          },
+          {
+            label: 'Добавить веху ниже', icon: <Diamond className="h-4 w-4" />, disabled: readOnly,
+            onSelect: () => store.addRowAfter(rowMenu.rowId, true),
+          },
+          {
+            label: many ? `Дублировать (${ids.length})` : 'Дублировать', icon: <CopyPlus className="h-4 w-4" />, disabled: readOnly,
+            onSelect: () => store.duplicateRows(ids),
+          },
+          { type: 'separator' },
+          {
+            label: 'Копировать', icon: <Copy className="h-4 w-4" />, shortcut: 'Ctrl+C',
+            onSelect: () => store.copyRows(ids),
+          },
+          {
+            label: 'Вставить', icon: <ClipboardPaste className="h-4 w-4" />, shortcut: 'Ctrl+V',
+            disabled: readOnly || store.clipboardCount === 0,
+            onSelect: () => store.pasteRows(),
+          },
+          { type: 'separator' },
+          {
+            label: 'Сдвинуть вверх', icon: <ArrowUp className="h-4 w-4" />, disabled: readOnly,
+            onSelect: () => store.moveRowsUp(ids),
+          },
+          {
+            label: 'Сдвинуть вниз', icon: <ArrowDown className="h-4 w-4" />, disabled: readOnly,
+            onSelect: () => store.moveRowsDown(ids),
+          },
+          {
+            label: 'Увеличить отступ', icon: <IndentIncrease className="h-4 w-4" />, disabled: readOnly,
+            onSelect: () => store.indentRows(ids),
+          },
+          {
+            label: 'Уменьшить отступ', icon: <IndentDecrease className="h-4 w-4" />, disabled: readOnly,
+            onSelect: () => store.outdentRows(ids),
+          },
+          { type: 'separator' },
+          {
+            label: many ? `Удалить (${ids.length})` : 'Удалить', icon: <Trash2 className="h-4 w-4" />,
+            danger: true, disabled: readOnly,
+            onSelect: () => store.deleteRows(ids),
+          },
+        ];
+        return <GridContextMenu x={rowMenu.x} y={rowMenu.y} items={items} onClose={close} />;
+      })()}
+
       <ColumnMappingDialog
         open={mapping !== null}
         onOpenChange={(o) => { if (!o) setMapping(null); }}
@@ -581,6 +645,7 @@ export function ScheduleEditor() {
             onFillCustom={store.fillCustom}
             rowIssues={rowIssues}
             cpmDates={cpmDates}
+            onRowContextMenu={(x, y, rowId) => setRowMenu({ x, y, rowId })}
           />
         </div>
 

@@ -11,6 +11,7 @@ import {
   type ColDef,
   type CellValueChangedEvent,
   type CellKeyDownEvent,
+  type CellContextMenuEvent,
   type ValueGetterParams,
   type RowClassParams,
   type GridApi,
@@ -93,6 +94,8 @@ interface ScheduleGridProps {
   rowIssues?: Map<string, 'critical' | 'warning' | 'info'>;
   /** CPM-derived planned dates per row id (fallback when no explicit date). */
   cpmDates?: Map<string, { start: Date; end: Date }>;
+  /** Right-click on a row: open a quick-commands context menu at the cursor. */
+  onRowContextMenu?: (x: number, y: number, rowId: string) => void;
 }
 
 /** Name cell: WBS indentation + collapse chevron for group rows. */
@@ -241,6 +244,7 @@ export function ScheduleGrid({
   onFillCustom,
   rowIssues,
   cpmDates,
+  onRowContextMenu,
 }: ScheduleGridProps) {
   const apiRef = useRef<GridApi<ScheduleRow> | null>(null);
 
@@ -406,6 +410,23 @@ export function ScheduleGrid({
     [readOnly, onFill, onFillCustom],
   );
 
+  // Right-click a row → ensure it's selected (unless part of a multi-selection)
+  // then surface the quick-commands menu at the cursor.
+  const onCellContextMenu = useCallback(
+    (e: CellContextMenuEvent<ScheduleRow>) => {
+      const mouse = e.event as MouseEvent | null;
+      if (!mouse || !e.node?.id || !e.data) return;
+      mouse.preventDefault();
+      if (!e.node.isSelected()) {
+        const api = apiRef.current;
+        api?.deselectAll();
+        e.node.setSelected(true);
+      }
+      onRowContextMenu?.(mouse.clientX, mouse.clientY, e.data.row_id);
+    },
+    [onRowContextMenu],
+  );
+
   // Colour rows by WBS nesting level; audit issues take precedence. Styles
   // live in globals.css (.plc-*); selected row is always gray (CSS).
   const getRowClass = useCallback(
@@ -434,6 +455,8 @@ export function ScheduleGrid({
         onSelectionChanged={onSelectionChanged}
         onCellValueChanged={onCellValueChanged}
         onCellKeyDown={onCellKeyDown}
+        onCellContextMenu={onCellContextMenu}
+        preventDefaultOnContextMenu
         getRowClass={getRowClass}
         stopEditingWhenCellsLoseFocus
         animateRows={false}
