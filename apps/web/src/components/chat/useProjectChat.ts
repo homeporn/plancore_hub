@@ -5,18 +5,20 @@ import {
   listChatMessages,
   sendChatMessage,
   deleteChatMessage,
-  listProjectMembers,
+  listChannelMembers,
+  listMyChannels,
   uploadChatImage,
   chatRowToMessage,
   type ChatMessage,
   type ChatAttachments,
+  type ChatChannel,
 } from '@plancore/data';
 import { getBrowserClient } from '@/lib/supabase/browser';
 import { useAuth } from '@/lib/useAuth';
 
 export interface ChatApi {
   messages: ChatMessage[];
-  /** author_id → display email (resolved from project members). */
+  /** author_id → display email (resolved from channel/project members). */
   authorEmail: (id: string) => string;
   loading: boolean;
   send: (body: string, attachments?: ChatAttachments) => Promise<void>;
@@ -25,23 +27,22 @@ export interface ChatApi {
   selfId: string | null;
 }
 
-/** Project chat: initial load + realtime inserts/updates + send. */
-export function useProjectChat(projectId: string | null): ChatApi {
+/** Messages of a single channel: initial load + realtime + send. */
+export function useChat(channelId: string | null): ChatApi {
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const emailsRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
-    if (!projectId) { setMessages([]); setLoading(false); return; }
+    if (!channelId) { setMessages([]); setLoading(false); return; }
     const client = getBrowserClient();
     let active = true;
     setLoading(true);
 
-    // Resolve member emails for author display, then load history.
     Promise.all([
-      listProjectMembers(client, projectId).catch(() => []),
-      listChatMessages(client, projectId).catch(() => []),
+      listChannelMembers(client, channelId).catch(() => []),
+      listChatMessages(client, channelId).catch(() => []),
     ]).then(([members, history]) => {
       if (!active) return;
       emailsRef.current = new Map(members.map((m) => [m.userId, m.email]));
@@ -49,12 +50,11 @@ export function useProjectChat(projectId: string | null): ChatApi {
       setLoading(false);
     });
 
-    // Realtime: new + edited/deleted messages for this project.
     const channel = client
-      .channel(`chat:${projectId}`)
+      .channel(`chat:${channelId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `project_id=eq.${projectId}` },
+        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `channel_id=eq.${channelId}` },
         (payload: { new: Record<string, unknown> }) => {
           const msg = chatRowToMessage(payload.new as never);
           setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
@@ -62,7 +62,7 @@ export function useProjectChat(projectId: string | null): ChatApi {
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'chat_messages', filter: `project_id=eq.${projectId}` },
+        { event: 'UPDATE', schema: 'public', table: 'chat_messages', filter: `channel_id=eq.${channelId}` },
         (payload: { new: Record<string, unknown> }) => {
           const msg = chatRowToMessage(payload.new as never);
           setMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)));
@@ -74,20 +74,19 @@ export function useProjectChat(projectId: string | null): ChatApi {
       active = false;
       void client.removeChannel(channel);
     };
-  }, [projectId]);
+  }, [channelId]);
 
   const send = useCallback(async (body: string, attachments: ChatAttachments = {}) => {
     const text = body.trim();
     const hasAttachment = !!attachments.imageUrl || !!attachments.taskRefId;
-    if (!projectId || !user || (!text && !hasAttachment)) return;
-    // The realtime INSERT echo appends the message to the list.
-    await sendChatMessage(getBrowserClient(), projectId, user.id, text, attachments);
-  }, [projectId, user]);
+    if (!channelId || !user || (!text && !hasAttachment)) return;
+    await sendChatMessage(getBrowserClient(), channelId, user.id, text, attachments);
+  }, [channelId, user]);
 
   const uploadImage = useCallback(async (file: File) => {
-    if (!projectId) throw new Error('Нет проекта');
-    return uploadChatImage(getBrowserClient(), projectId, file);
-  }, [projectId]);
+    if (!channelId) throw new Error('Нет канала');
+    return uploadChatImage(getBrowserClient(), channelId, file);
+  }, [channelId]);
 
   const remove = useCallback(async (id: string) => {
     await deleteChatMessage(getBrowserClient(), id);
@@ -99,4 +98,25 @@ export function useProjectChat(projectId: string | null): ChatApi {
   );
 
   return { messages, authorEmail, loading, send, uploadImage, remove, selfId: user?.id ?? null };
+}
+
+/** List of channels the user can access; `reload` re-fetches after changes. */
+export function useMyChannels(enabled: boolean): { channels: ChatChannel[]; loading: boolean; reload: () => void } {
+  const [channels, setChannels] = useState<ChatChannel[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const reload = useCallback(() => {
+    setLoading(true);
+    listMyChannels(getBrowserClient())
+      .then(setChannels)
+      .catch(() => setChannels([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!enabled) return;
+    reload();
+  }, [enabled, reload]);
+
+  return { channels, loading, reload };
 }

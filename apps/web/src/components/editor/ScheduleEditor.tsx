@@ -488,8 +488,7 @@ export function ScheduleEditor() {
       {current && (
         <>
           <ChatPanel
-            projectId={current.id}
-            projectName={current.name}
+            initialProjectId={current.id}
             open={chatOpen}
             onOpenChange={setChatOpen}
             tasks={store.rows

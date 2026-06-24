@@ -96,7 +96,7 @@ export async function removeMember(
 
 export interface ChatMessage {
   id: string;
-  projectId: string;
+  channelId: string;
   authorId: string;
   body: string;
   imageUrl: string | null;
@@ -109,7 +109,7 @@ export interface ChatMessage {
 
 interface ChatRow {
   id: string;
-  project_id: string;
+  channel_id: string;
   author_id: string;
   body: string;
   image_url: string | null;
@@ -123,7 +123,7 @@ interface ChatRow {
 export function chatRowToMessage(r: ChatRow): ChatMessage {
   return {
     id: r.id,
-    projectId: r.project_id,
+    channelId: r.channel_id,
     authorId: r.author_id,
     body: r.body,
     imageUrl: r.image_url,
@@ -141,19 +141,101 @@ export interface ChatAttachments {
   taskRefLabel?: string | null;
 }
 
+// ── Channels ───────────────────────────────────────────────────────────────
+
+export interface ChatChannel {
+  channelId: string;
+  projectId: string | null;
+  title: string;
+  isProject: boolean;
+  lastMessageAt: string | null;
+  memberCount: number;
+}
+
+/** Channels the current user can access (project channels + standalone). */
+export async function listMyChannels(client: PlancoreClient): Promise<ChatChannel[]> {
+  const { data, error } = await loose(client).rpc('list_my_channels');
+  if (error) throw error;
+  return ((data ?? []) as {
+    channel_id: string; project_id: string | null; title: string;
+    is_project: boolean; last_message_at: string | null; member_count: number;
+  }[]).map((r) => ({
+    channelId: r.channel_id,
+    projectId: r.project_id,
+    title: r.title,
+    isProject: r.is_project,
+    lastMessageAt: r.last_message_at,
+    memberCount: r.member_count,
+  }));
+}
+
+/** Get (creating if needed) the chat channel bound to a project. */
+export async function ensureProjectChannel(
+  client: PlancoreClient,
+  projectId: string,
+): Promise<string> {
+  const { data, error } = await loose(client).rpc('ensure_project_channel', { _project_id: projectId });
+  if (error) throw error;
+  return data as string;
+}
+
+/** Create a standalone (project-less) chat with optional members by email. */
+export async function createChatChannel(
+  client: PlancoreClient,
+  title: string,
+  memberEmails: string[] = [],
+): Promise<string> {
+  const { data, error } = await loose(client).rpc('create_chat_channel', {
+    _title: title,
+    _member_emails: memberEmails,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function listChannelMembers(
+  client: PlancoreClient,
+  channelId: string,
+): Promise<{ userId: string; email: string }[]> {
+  const { data, error } = await loose(client).rpc('list_channel_members', { _channel_id: channelId });
+  if (error) throw error;
+  return ((data ?? []) as { user_id: string; email: string }[]).map((r) => ({
+    userId: r.user_id,
+    email: r.email,
+  }));
+}
+
+export async function addChannelMember(
+  client: PlancoreClient,
+  channelId: string,
+  email: string,
+): Promise<void> {
+  const { error } = await loose(client).rpc('add_channel_member', { _channel_id: channelId, _email: email });
+  if (error) throw error;
+}
+
+export async function removeChannelMember(
+  client: PlancoreClient,
+  channelId: string,
+  userId: string,
+): Promise<void> {
+  const { error } = await loose(client).rpc('remove_channel_member', { _channel_id: channelId, _user_id: userId });
+  if (error) throw error;
+}
+
 const CHAT_BUCKET = 'chat-attachments';
 
 /**
  * Upload a screenshot to the chat bucket and return its public URL.
- * Path is `{projectId}/{uuid}.{ext}` so storage RLS can gate by project.
+ * Path is `{channelId}/{uuid}.{ext}` so storage RLS can gate by channel access.
  */
 export async function uploadChatImage(
   client: PlancoreClient,
-  projectId: string,
+  channelId: string,
   file: File,
 ): Promise<string> {
   const ext = (file.name.split('.').pop() || 'png').toLowerCase();
-  const path = `${projectId}/${crypto.randomUUID()}.${ext}`;
+  const path = `${channelId}/${crypto.randomUUID()}.${ext}`;
   const storage = loose(client).storage.from(CHAT_BUCKET);
   const { error } = await storage.upload(path, file, {
     contentType: file.type || 'image/png',
@@ -163,16 +245,16 @@ export async function uploadChatImage(
   return storage.getPublicUrl(path).data.publicUrl;
 }
 
-/** Load a project's chat messages in chronological order (most recent last). */
+/** Load a channel's messages in chronological order (most recent last). */
 export async function listChatMessages(
   client: PlancoreClient,
-  projectId: string,
+  channelId: string,
   limit = 200,
 ): Promise<ChatMessage[]> {
   const { data, error } = await loose(client)
     .from('chat_messages')
     .select('*')
-    .eq('project_id', projectId)
+    .eq('channel_id', channelId)
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) throw error;
@@ -181,7 +263,7 @@ export async function listChatMessages(
 
 export async function sendChatMessage(
   client: PlancoreClient,
-  projectId: string,
+  channelId: string,
   authorId: string,
   body: string,
   attachments: ChatAttachments = {},
@@ -189,7 +271,7 @@ export async function sendChatMessage(
   const { data, error } = await loose(client)
     .from('chat_messages')
     .insert({
-      project_id: projectId,
+      channel_id: channelId,
       author_id: authorId,
       body,
       image_url: attachments.imageUrl ?? null,

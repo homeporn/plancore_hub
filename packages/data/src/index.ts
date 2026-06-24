@@ -23,10 +23,17 @@ export {
   deleteChatMessage,
   uploadChatImage,
   chatRowToMessage,
+  listMyChannels,
+  ensureProjectChannel,
+  createChatChannel,
+  listChannelMembers,
+  addChannelMember,
+  removeChannelMember,
   type ProjectRole,
   type ProjectMember,
   type ChatMessage,
   type ChatAttachments,
+  type ChatChannel,
 } from './repositories/chat.js';
 export {
   wbsTemplateToNode,
